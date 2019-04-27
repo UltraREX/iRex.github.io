@@ -1,0 +1,595 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>三十七度一</title>
+  
+  <subtitle>临渊羡鱼 退而织网</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="https://ultrarex.com/"/>
+  <updated>2019-04-27T11:15:00.206Z</updated>
+  <id>https://ultrarex.com/</id>
+  
+  <author>
+    <name>Ray Young</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>使用 Automator 上传图片到 sm.ms（再版）</title>
+    <link href="https://ultrarex.com/p/2358.html"/>
+    <id>https://ultrarex.com/p/2358.html</id>
+    <published>2019-04-27T04:05:48.616Z</published>
+    <updated>2019-04-27T11:15:00.206Z</updated>
+    
+    <content type="html"><![CDATA[<p><img src="https://i.loli.net/2017/09/12/59b745a6f0eaa.jpg" alt="Sunrise form Zoommy"></p><p>历史性时刻！作为一个渣渣程序员写的<a href="http://ultrarex.com/2017/08/21/use-Automator-upload-images-to-sm-ms/">博文</a>有人和我互动啦（撒花 奔跑 跳跃），这感觉就像清晨的第一缕阳光，让人倍感温暖。鉴于<a href="http://ultrarex.com/2017/08/21/use-Automator-upload-images-to-sm-ms/">上篇</a>写的实在是笼统，且 Shell 脚本没有单独粘贴出来，导致只看截图并不能完成该服务，那么这篇再仔细写一下吧（其实曾打算上一篇就好好写的，但是懒就仓促收尾  逃）。</p><p>关于 <em>sm.ms</em> <em>图床</em> 就不多作介绍了， <em>hexo</em> <em>Markdown</em> <em>Github</em> <em>搭建博客</em> 我打算以后再写一写。</p><p>好了，正文开始。</p><p>打开 <a href="https://sm.ms/" target="_blank" rel="noopener">sm.ms 官网</a>我们可以看到如下的网页。</p><p><img src="https://i.loli.net/2017/08/21/599ab25a8ce9a.png" alt="sm.ms"> </p><p>首先印入眼帘的是其提供了 web 上传的方式，只需要简单的拖拽需要上传的图片就可以完成上传，上传成功之后也提供了几种常见的需求场景的文本格式。</p><p><img src="https://i.loli.net/2017/09/12/59b74a049dfb8.png" alt="sm.ms uploaded"></p><p>这种方法固然比较便捷，但是对于我来说还是有些许的不方便，我的理想方法是在 Finder 中选中，右键直接上传，并将图片链接生成 Markdown 格式 <code>![image_alt](image_url)</code> 便于在 Markdown 文中直接粘贴。</p><p>我们抬眼看网页的右上角，发现 sm.ms 提供了相关的 API ，这下离我的设想就又近了一步。</p><p><img src="https://i.loli.net/2017/09/12/59b74d9126501.png" alt="sm.ms API"></p><p>我们可以看到 sm.ms 提供了三个 API 分别是：</p><ul><li>图片上传</li><li>上传历史</li><li>清除历史上传</li></ul><p>我只关心上传，所以今天只介绍图片上传。</p><table><thead><tr><th>功能</th><th>上传图片接口</th></tr></thead><tbody><tr><td>HTTP 请求方式</td><td>POST</td></tr><tr><td>URL</td><td><a href="https://sm.ms/api/upload" target="_blank" rel="noopener">https://sm.ms/api/upload</a></td></tr></tbody></table><p>查看文档后，我们看到上传的 URL 为 <code>https://sm.ms/api/upload</code> 请求方式为 POST ，需要三个参数，其中有两个是可选的，可以根据需求自行决定是否需要可选参数。我们先用 <em>终端</em> 来做一个简单的测试。</p><p><img src="https://i.loli.net/2017/09/12/59b752a38a2fc.png" alt></p><p>可以看到返回了一个 json 格式的字符串，根据文档的返回数据说明，证明我们测试成功了。那么接下来就是如何将返回的 json 数据 转化为所需的 Markdown 格式了。根据文档我们可以知道 json 字符串中 url 字段是图片在服务器上的地址，所以我们过滤出 url 然后拼接成 Markdown 格式 <code>![image_alt](image_url)</code> 是不是就可以了呢，接着做一个实验。</p><p><img src="https://i.loli.net/2017/09/12/59b75571732d4.png" alt></p><p>通过观察返回的 json 字符串，可以发现 url 的格式为 <code>http[s]*.*</code> 直接简单粗暴的 grep 出所需的的文本（当然我这里没有考虑异常情况，你可以拓展一下，增强程序的健壮性）。</p><p>好，既然测试没有什么问题，那么就用 Automator 来实现我的目标吧。</p><p>打开 Automator 新建 服务：</p><p><img src="https://i.loli.net/2017/08/21/599ab600bdc9c.png" alt></p><p>因为是上传图片，所以“服务“收到选定的类型选图像文件，这样只有在图像文件右键才会出现我们创建的服务：</p><p><img src="https://i.loli.net/2017/08/21/599ab65092015.png" alt></p><p>然后在“实用工具”中，找到“拷贝至剪切板”拖拽到工作流程，该步可以获取选中的图片路径。</p><p><img src="https://i.loli.net/2017/09/12/59b75ac340835.png" alt></p><p>可以点击右上角的运行，测试一下，点击后可以看到一个弹出框：</p><p><img src="https://i.loli.net/2017/09/12/59b75afea049e.png" alt></p><p>此服务在 Automator 内运行时将不会接收输入信息。若要使用 Automator 来测试此服务，请将“获得指定的 Finder 项目”操作添加到工作流程的开始。若要在 Automator 外运行，请先移除或停用此操作。按提示操作将“获得指定的 Finder 项目”拖拽到工作流程:</p><p><img src="https://i.loli.net/2017/09/12/59b75b5e097f5.png" alt></p><p>然后添加几个图片文件，点击运行：</p><p><img src="https://i.loli.net/2017/09/12/59b75bcb3ca39.png" alt></p><p>可以看到在“拷贝至剪切板”的结果中我们已经有了图片的路径信息，那么接下来只需要通过 curl 上传即可，接下来在“实用工具”中找到“运行 Shell 脚本”操作并拖拽到工作流程中：</p><p><img src="https://i.loli.net/2017/09/12/59b75c28049bf.png" alt></p><p>然后将“拷贝至剪切板”的结果作为参数传入“运行 Shell 脚本”操作中，即在“运行 Shell 脚本”的右上角的传递输入选择作为自变量。然后在输入框中输入上传的 Shell 脚本：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">jsonRet=<span class="string">""</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> <span class="string">"<span class="variable">$@</span>"</span></span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">jsonRet=<span class="variable">$&#123;jsonRet&#125;</span>$(curl -F smfile=@<span class="variable">$f</span> https://sm.ms/api/upload)<span class="string">"\n"</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$jsonRet</span></span><br></pre></td></tr></table></figure><p>这里有必要说明一下，之所以用 for 循环，是因为我们可能一次选择多张图片，所以遍历多张图片的路径依次上传。其中 <code>jsonRet</code> 是为了保存多张图片的上传结果并方便以后的处理。</p><p>接下来再次拖拽一个“运行 Shell 脚本”操作到工作流程中，当然你也可以在一个“运行 Shell 脚本”操作中处理，我是习惯于一个“运行 Shell 脚本”操作只处理一件事情：</p><p><img src="https://i.loli.net/2017/09/12/59b7711e20abb.png" alt></p><p>同样的，将上一个“运行 Shell 脚本”操作的输入作为该“运行 Shell 脚本”操作的输入，然后输入筛选出 url 的脚本：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> <span class="string">"<span class="variable">$@</span>"</span></span><br><span class="line"><span class="keyword">do</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$f</span> | sed <span class="string">'s/\"//g'</span> | grep -o <span class="string">'https:\\/\\/.*'</span> | awk -F <span class="string">','</span> <span class="string">'&#123;print $1&#125;'</span> | sed <span class="string">'s/\\//g'</span></span><br><span class="line"><span class="keyword">done</span></span><br></pre></td></tr></table></figure><p><img src="https://i.loli.net/2017/09/12/59b7716888934.png" alt></p><p>这样我们有了所选图片的链接，接下来只需要将链接拼接成我们所需要的 Markdown 格式文本即可，再次拖拽一个“运行 Shell 脚本”操作到工作流程中，并选择传递输入为作为自变量：</p><p><img src="https://i.loli.net/2017/09/12/59b771e108654.png" alt></p><p>然后输入所需脚本：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">ret=<span class="string">""</span></span><br><span class="line"><span class="keyword">for</span> f <span class="keyword">in</span> <span class="string">"<span class="variable">$@</span>"</span></span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">ret=<span class="variable">$&#123;ret&#125;</span><span class="string">"![](<span class="variable">$f</span>)\n"</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"><span class="built_in">echo</span> <span class="variable">$ret</span> | pbcopy</span><br></pre></td></tr></table></figure><p><img src="https://i.loli.net/2017/09/12/59b7720574b99.png" alt></p><p>有必要说明一下，<code>pbcopy</code> 是将 <code>ret</code> 变量中的内容拷贝至剪切板的意思。相应的 <code>pbpaste</code> 是将剪切板的内容粘贴的意思。</p><p>好，至此我们的工作流程就全部结束了，点击运行测试一下：</p><p><img src="https://i.loli.net/2017/09/12/59b7729c426e7.png" alt></p><p><img src="https://i.loli.net/2017/09/12/59b772c4ba304.png" alt></p><p>发现测试成功，这个时候不要太高兴而忘记将用于测试的“获得指定的 Finder 项目”操作去除哦：</p><p><img src="https://i.loli.net/2017/09/12/59b77314b75c0.png" alt></p><p>之后将服务保存，你在 Finder 中选择图片的时候，右键就可以直接看到或者在服务中看到你刚刚保存的服务了。抓紧测试使用一下吧。</p><p>⚠️注：本文未考虑一切异常情况，只作为抛砖之用，你可以自行增强程序的健壮性。再一个当上传图片的文件名包含中文的时候，存在获取不到链接的情况。</p><p>EOF</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;img src=&quot;https://i.loli.net/2017/09/12/59b745a6f0eaa.jpg&quot; alt=&quot;Sunrise form Zoommy&quot;&gt;&lt;/p&gt;
+&lt;p&gt;历史性时刻！作为一个渣渣程序员写的&lt;a href=&quot;http://ultrarex.co
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="Automator" scheme="https://ultrarex.com/tags/Automator/"/>
+    
+      <category term="sm.ms" scheme="https://ultrarex.com/tags/sm-ms/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Mac 设置自动启动项</title>
+    <link href="https://ultrarex.com/p/9bda.html"/>
+    <id>https://ultrarex.com/p/9bda.html</id>
+    <published>2018-05-28T13:20:20.000Z</published>
+    <updated>2019-04-27T11:15:00.204Z</updated>
+    
+    <content type="html"><![CDATA[<p>方法有二，分别为：</p><h2 id="1-使用用户登录项"><a href="#1-使用用户登录项" class="headerlink" title="1. 使用用户登录项"></a>1. 使用用户登录项</h2><p>进入 <code>系统便好设置</code> -&gt; <code>用户与群组</code> -&gt; <code>登录项</code> 点击 + 按钮，添加即可。<br>这种方式比较简单快捷，但是用户登录后才会触发。</p><h2 id="2-launchctl-加载-plist-文件"><a href="#2-launchctl-加载-plist-文件" class="headerlink" title="2. launchctl 加载 plist 文件"></a>2. launchctl 加载 plist 文件</h2><p>Mac 开机启动时会启动 launchd 进程，然后依次完成以下工作：</p><ol><li>根据 /System/Library/LaunchDaemons 和 /Library/LaunchDaemons 路径下的 plist 文件加载系统级守护进程</li><li>注册上述守护进程需要的套接字及文件描述符</li><li>根据 plist 文件中的 KeepAlive 键值，启动那些需要在系统周期内一直保持的进程</li><li>根据 plist 文件的设定，在条件满足时启动进程</li><li>关机时，给所有由 launchctl 开启的进程发送 SIGTERM 信号</li></ol><p>另外：用户登录后才会加载 /System/Library/LaunchAgents 和 /Library/LaunchAgents 路径下的 plist 文件</p><p>launchd 配置文件共有 5 个路径：</p><table><thead><tr><th>配置文件路径</th><th>释义</th></tr></thead><tbody><tr><td>~/Library/LaunchAgents</td><td>由用户自己定义的任务项</td></tr><tr><td>/Library/LaunchAgents</td><td>由管理员为用户定义的任务项</td></tr><tr><td>/Library/LaunchDaemons</td><td>由管理员定义的守护进程任务项</td></tr><tr><td>/System/Library/LaunchAgents</td><td>由 macOS 为用户定义的任务项</td></tr><tr><td>/System/Library/LaunchDaemons</td><td>由 macOS 定义的守护进程任务项</td></tr></tbody></table><p>启动顺序为：</p><ol><li>/System/Library/LaunchDaemons</li><li>/Library/LaunchDaemons</li><li>/System/Library/LaunchAgents</li><li>/Library/LaunchAgents</li><li>~/Library/LaunchAgents</li></ol><p>其中：<br>LaunchDaemons 是用户未登陆前就启动的服务（守护进程）。<br>LaunchAgents 是用户登陆后启动的服务（守护进程）。</p><p>那么我们就可以根据需要来编写 plist 文件达成我们的需求。</p><h3 id="plist-文件示例"><a href="#plist-文件示例" class="headerlink" title="plist 文件示例"></a>plist 文件示例</h3><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0" encoding="UTF-8"?&gt;</span></span><br><span class="line"><span class="meta">&lt;!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd"&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">plist</span> <span class="attr">version</span>=<span class="string">"1.0"</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">dict</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">key</span>&gt;</span>Label<span class="tag">&lt;/<span class="name">key</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">string</span>&gt;</span>com.example.exampled<span class="tag">&lt;/<span class="name">string</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">key</span>&gt;</span>ProgramArguments<span class="tag">&lt;/<span class="name">key</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">array</span>&gt;</span></span><br><span class="line">         <span class="tag">&lt;<span class="name">string</span>&gt;</span>exampled<span class="tag">&lt;/<span class="name">string</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">array</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">key</span>&gt;</span>KeepAlive<span class="tag">&lt;/<span class="name">key</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">true</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">key</span>&gt;</span>RunAtLoad<span class="tag">&lt;/<span class="name">key</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">true</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dict</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">plist</span>&gt;</span></span><br></pre></td></tr></table></figure><h3 id="plist-文件部分键值说明"><a href="#plist-文件部分键值说明" class="headerlink" title="plist 文件部分键值说明"></a>plist 文件部分键值说明</h3><p>详情请看 <a href="https://developer.apple.com/legacy/library/documentation/Darwin/Reference/ManPages/man5/launchd.plist.5.html#//apple_ref/doc/man/5/launchd.plist" target="_blank" rel="noopener">点我</a></p><h5 id="Label-必须"><a href="#Label-必须" class="headerlink" title="Label (必须)"></a>Label (必须)</h5><p>服务的名称</p><h5 id="ProgramArguments-指定可执行文件路径及参数"><a href="#ProgramArguments-指定可执行文件路径及参数" class="headerlink" title="ProgramArguments  指定可执行文件路径及参数"></a>ProgramArguments  指定可执行文件路径及参数</h5><p>比如执行 <code>ls -a</code>，对应到配置中为：</p><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">key</span>&gt;</span>ProgramArguments<span class="tag">&lt;/<span class="name">key</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">array</span>&gt;</span></span><br><span class="line">     <span class="tag">&lt;<span class="name">string</span>&gt;</span>ls<span class="tag">&lt;/<span class="name">string</span>&gt;</span>         </span><br><span class="line">     <span class="tag">&lt;<span class="name">string</span>&gt;</span>-a<span class="tag">&lt;/<span class="name">string</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">array</span>&gt;</span></span><br></pre></td></tr></table></figure><h5 id="RunAtLoad-可选"><a href="#RunAtLoad-可选" class="headerlink" title="RunAtLoad (可选)"></a>RunAtLoad (可选)</h5><p>标识 launchd 在加载完该项服务之后立即启动路径指定的可执行文件。默认值为 false,设置为 true 即可实现开机运行脚本文件</p><h5 id="StartCalendarInterval-可选"><a href="#StartCalendarInterval-可选" class="headerlink" title="StartCalendarInterval (可选)"></a>StartCalendarInterval (可选)</h5><p>该关键字可以用来设置定时执行可执行程序，可使用 Month, Day, Hour, Minute, Second等子关键字，它可以指定脚本在多少月，天，小时，分钟，秒，星期几等时间上执行，若缺少某个关键字则表示任意该时间点，类似于 Unix 的 Crontab 计划任务的设置方式，比如在该例子中设置为每小时的20分的时候执行该命令</p><h5 id="KeepAlive-可选"><a href="#KeepAlive-可选" class="headerlink" title="KeepAlive (可选)"></a>KeepAlive (可选)</h5><p>是否保持持续运行</p><p>注：所有 key 关键字详细使用说明可以在 macOS 终端下使用命令 <code>man launchd.plist</code> 查询</p><h5 id="UserName-可选"><a href="#UserName-可选" class="headerlink" title="UserName (可选)"></a>UserName (可选)</h5><p>指定运行启动项的用户，只有当 Launchd 作为 root 用户运行时，此项才使用</p><h5 id="GroupName-可选"><a href="#GroupName-可选" class="headerlink" title="GroupName (可选)"></a>GroupName (可选)</h5><p>指定运行启动项的组，只有当 Launchd 作为 root 用户运行时，此项才适用</p><h3 id="检查-plist-文件语法是否正确"><a href="#检查-plist-文件语法是否正确" class="headerlink" title="检查 plist 文件语法是否正确"></a>检查 plist 文件语法是否正确</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">plutil ~/Library/LaunchAgents/example.plist</span><br></pre></td></tr></table></figure><h3 id="载入配置-使其生效"><a href="#载入配置-使其生效" class="headerlink" title="载入配置, 使其生效"></a>载入配置, 使其生效</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">launchctl load ~/Library/LaunchAgents/example.plist</span><br></pre></td></tr></table></figure><h3 id="卸载配置"><a href="#卸载配置" class="headerlink" title="卸载配置"></a>卸载配置</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">launchctl unload ~/Library/LaunchAgents/example.plist</span><br></pre></td></tr></table></figure><h3 id="查看服务运行状态"><a href="#查看服务运行状态" class="headerlink" title="查看服务运行状态"></a>查看服务运行状态</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">launchctl list</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;方法有二，分别为：&lt;/p&gt;
+&lt;h2 id=&quot;1-使用用户登录项&quot;&gt;&lt;a href=&quot;#1-使用用户登录项&quot; class=&quot;headerlink&quot; title=&quot;1. 使用用户登录项&quot;&gt;&lt;/a&gt;1. 使用用户登录项&lt;/h2&gt;&lt;p&gt;进入 &lt;code&gt;系统便好设置&lt;/code&gt; 
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>修改 Mac 上指定应用语言设置</title>
+    <link href="https://ultrarex.com/p/c019.html"/>
+    <id>https://ultrarex.com/p/c019.html</id>
+    <published>2018-05-22T13:57:28.000Z</published>
+    <updated>2019-04-27T11:15:00.202Z</updated>
+    
+    <content type="html"><![CDATA[<p>很简单，一行指令即可</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults write <span class="string">'&#123;App Bundle Identifier&#125;'</span> AppleLanguages <span class="string">'("Your choose language")'</span></span><br></pre></td></tr></table></figure><p>那么如何获取应用的 Bundle Identifier 呢？同样很简单，以 QQ 为例：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mdls -name kMDItemCFBundleIdentifier /Applications/QQ.app</span><br></pre></td></tr></table></figure><p>命令行中执行之后即可得到 QQ 的 Bundle Identifier 信息:</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">kMDItemCFBundleIdentifier = <span class="string">"com.tencent.qq"</span></span><br></pre></td></tr></table></figure><p>com.tencent.qq 即为 QQ 的 Bundle Identifier</p><p>接下来，我们就可以使用之前介绍的指令来修改 QQ 的默认语言</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults write com.tencent.qq AppleLanguages <span class="string">'("zh-Hans")'</span></span><br></pre></td></tr></table></figure><p>将其默认语言修改为中文，此修改是永久生效的，也可以使用同样的指令再修改会原来的语言</p><p>如果你只需要让某个应用以某种语言运行一次，那么你可以这样：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">/Applications/QQ.app/Contents/MacOS/QQ  -AppleLanguages <span class="string">'("zh-Hans")'</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;很简单，一行指令即可&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;cod
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>使用 Cloudflare 给网站免费升级 HTTPS</title>
+    <link href="https://ultrarex.com/p/5674.html"/>
+    <id>https://ultrarex.com/p/5674.html</id>
+    <published>2017-09-20T10:08:04.000Z</published>
+    <updated>2019-04-27T11:15:00.209Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><p>既然提到 HTTPS 我觉得有必要回顾梳理下相关计算机网络知识，便于自己的记忆理解，温故而知新。如果想直接进入正文请 <a href="#Cloudflare">点击这里</a> 。</p><p>计算机网络的核心就是网络协议。网络协议是为计算机网络中进行数据交换而建立的规则、标准或者说是约定的集合。例如，网络中一个微机用户和一个大型主机的操作员进行通信，由于这两个数据终端所用字符集不同，因此操作员所输入的命令彼此不认识。为了能进行通信，规定每个终端都要将各自字符集中的字符先变换为标准字符集的字符后，才进入网络传送，到达目的终端之后，再变换为该终端字符集的字符。当然，对于不相容终端，除了需变换字符集字符外，其他特性，如显示格式、行长、行数、屏幕滚动方式等也需作相应的变换。</p><p>为了使不同计算机厂家生产的计算机能够相互通信，以便在更大的范围内建立计算机网络，国际标准化组织（ISO）在1978年提出了“开放系统互联参考模型”，即著名的 OSI/RM 模型（Open System Interconnection/Reference Model）。它将计算机网络体系结构的通信协议划分为七层，自下而上依次为：<br><em>物理层</em>（Physics Layer）<br><em>数据链路层</em>（Data Link Layer）<br><em>网络层</em>（Network Layer）<br><em>传输层</em>（Transport Layer）<br><em>会话层</em>（Session Layer）<br><em>表示层</em>（Presentation Layer）<br><em>应用层</em>（Application Layer）</p><p>其中第四层完成数据传送服务，上面三层面向用户。对于每一层，至少制定两项标准：服务定义和协议规范。前者给出了该层所提供的服务的准确定义，后者详细描述了该协议的动作和各种有关规程，以保证服务的提供。</p><p>常见的网络层次划分还有 TCP/IP 四层协议以及 TCP/IP 五层协议：</p><p><img src="https://ooo.0o0.ooo/2017/09/20/59c2446dd7b39.png" alt></p><h2 id="OSI-RM-七层模型"><a href="#OSI-RM-七层模型" class="headerlink" title="OSI/RM 七层模型"></a>OSI/RM 七层模型</h2><p>TCP/IP 协议毫无疑问是互联网的基础协议，没有它就根本不可能上网，任何和互联网有关的操作都离不开TCP/IP 协议。不管是 OSI/RM 七层模型还是 TCP/IP 的四层、五层模型，每一层中都要自己的专属协议，完成自己相应的工作以及与上下层级之间进行沟通。由于 OSI/RM 七层模型为网络的标准层次划分，所以我们以 OSI/RM 七层模型为例从下向上进行一一介绍。</p><p><img src="https://i.loli.net/2017/09/20/59c2464215827.gif" alt></p><h3 id="1-物理层（Physical-Layer）"><a href="#1-物理层（Physical-Layer）" class="headerlink" title="1. 物理层（Physical Layer）"></a>1. 物理层（Physical Layer）</h3><p>激活、维持、关闭通信端点之间的机械特性、电气特性、功能特性以及过程特性。<u>该层为上层协议提供了一个传输数据的可靠的物理媒体。简单的说，物理层确保原始的数据可在各种物理媒体上传输。</u>物理层记住两个重要的设备名称，中继器（Repeater，也叫放大器）和集线器。</p><h3 id="2-数据链路层（Data-Link-Layer）"><a href="#2-数据链路层（Data-Link-Layer）" class="headerlink" title="2. 数据链路层（Data Link Layer）"></a>2. 数据链路层（Data Link Layer）</h3><p>数据链路层在物理层提供的服务的基础上向网络层提供服务，其最基本的服务是将源自网络层来的数据可靠地传输到相邻节点的目标机网络层。为达到这一目的，数据链路必须具备一系列相应的功能，主要有：如何将数据组合成数据块，在数据链路层中称这种数据块为帧（frame），帧是数据链路层的传送单位；如何控制帧在物理信道上的传输，包括如何处理传输差错，如何调节发送速率以使与接收方相匹配；以及在两个网络实体之间提供数据链路通路的建立、维持和释放的管理。数据链路层在不可靠的物理介质上提供可靠的传输。该层的作用包括：物理地址寻址、数据的成帧、流量控制、数据的检错、重发等。</p><p>有关数据链路层的重要知识点：</p><ol><li>数据链路层为网络层提供可靠的数据传输；</li><li>基本数据单位为帧；</li><li>主要的协议：以太网协议；</li><li>两个重要设备名称：网桥和交换机。</li></ol><h3 id="3-网络层（Network-Layer）"><a href="#3-网络层（Network-Layer）" class="headerlink" title="3. 网络层（Network Layer）"></a>3. 网络层（Network Layer）</h3><p>网络层的目的是实现两个端系统之间的数据透明传送，具体功能包括寻址和路由选择、连接的建立、保持和终止等。它提供的服务使传输层不需要了解网络中的数据传输和交换技术。如果您想用尽量少的词来记住网络层，那就是“路径选择、路由及逻辑寻址”。</p><p>网络层中涉及众多的协议，其中包括最重要的协议，也是 TCP/IP 的核心协议 —— IP 协议。IP 协议非常简单，仅仅提供不可靠、无连接的传送服务。IP 协议的主要功能有：无连接数据报传输、数据报路由选择和差错控制。与 IP 协议配套使用实现其功能的还有地址解析协议 ARP、逆地址解析协议 RARP、因特网报文协议 ICMP、因特网组管理协议 IGMP。具体的协议我们会在接下来的部分进行总结，有关网络层的重点为：</p><ol><li>网络层负责对子网间的数据包进行路由选择。此外，网络层还可以实现拥塞控制、网际互连等功能；</li><li>基本数据单位为 IP 数据报；</li><li>包含的主要协议：<br> IP 协议（Internet Protocol，因特网互联协议）；<br> ICMP 协议（Internet Control Message Protocol，因特网控制报文协议）；<br> ARP 协议（Address Resolution Protocol，地址解析协议）；<br> RARP 协议（Reverse Address Resolution Protocol，逆地址解析协议）。</li><li>重要的设备：路由器。</li></ol><h3 id="4-传输层（Transport-Layer）"><a href="#4-传输层（Transport-Layer）" class="headerlink" title="4. 传输层（Transport Layer）"></a>4. 传输层（Transport Layer）</h3><p>第一个端到端，即主机到主机的层次。传输层负责将上层数据分段并提供端到端的、可靠的或不可靠的传输。此外，传输层还要处理端到端的差错控制和流量控制问题。</p><p>传输层的任务是根据通信子网的特性，最佳的利用网络资源，为两个端系统的会话层之间，提供建立、维护和取消传输连接的功能，负责端到端的可靠数据传输。在这一层，信息传送的协议数据单元称为段或报文。<br>网络层只是根据网络地址将源结点发出的数据包传送到目的结点，而传输层则负责将数据可靠地传送到相应的端口。<br>有关网络层的重点：</p><ol><li>传输层负责将上层数据分段并提供端到端的、可靠的或不可靠的传输以及端到端的差错控制和流量控制问题；</li><li>包含的主要协议：TCP协议（Transmission Control Protocol，传输控制协议）、UDP协议（User Datagram Protocol，用户数据报协议）；</li><li>重要设备：网关。</li></ol><h3 id="5-会话层（Session-Layer）"><a href="#5-会话层（Session-Layer）" class="headerlink" title="5. 会话层（Session Layer）"></a>5. 会话层（Session Layer）</h3><p>会话层管理主机之间的会话进程，即负责建立、管理、终止进程之间的会话。会话层还利用在数据中插入校验点来实现数据的同步。</p><h3 id="6-表示层（Presentation-Layer）"><a href="#6-表示层（Presentation-Layer）" class="headerlink" title="6. 表示层（Presentation Layer）"></a>6. 表示层（Presentation Layer）</h3><p>表示层对上层数据或信息进行变换以保证一个主机应用层信息可以被另一个主机的应用程序理解。表示层的数据转换包括数据的加密、压缩、格式转换等。</p><h3 id="7-应用层（Application-Layer）"><a href="#7-应用层（Application-Layer）" class="headerlink" title="7. 应用层（Application Layer）"></a>7. 应用层（Application Layer）</h3><p>为操作系统或网络应用程序提供访问网络服务的接口。</p><p>会话层、表示层和应用层重点：</p><ol><li>数据传输基本单位为报文；</li><li>包含的主要协议：FTP（文件传送协议）、Telnet（远程登录协议）、DNS（域名解析协议）、SMTP（邮件传送协议），POP3 协议（邮局协议），HTTP 协议（Hyper Text Transfer Protocol）。</li></ol><h2 id="IP-地址"><a href="#IP-地址" class="headerlink" title="IP 地址"></a>IP 地址</h2><h3 id="1-网络地址"><a href="#1-网络地址" class="headerlink" title="1. 网络地址"></a>1. 网络地址</h3><p>IP 地址由网络号（包括子网号）和主机号组成，网络地址的主机号为全0，网络地址代表着整个网络。</p><h2 id="2-广播地址"><a href="#2-广播地址" class="headerlink" title="2. 广播地址"></a>2. 广播地址</h2><p>广播地址通常称为直接广播地址，是为了区分受限广播地址。</p><p>广播地址与网络地址的主机号正好相反，广播地址中，主机号为全1。当向某个网络的广播地址发送消息时，该网络内的所有主机都能收到该广播消息。</p><h3 id="3-组播地址"><a href="#3-组播地址" class="headerlink" title="3. 组播地址"></a>3. 组播地址</h3><p>D 类地址就是组播地址。</p><p>先回忆下 A，B，C，D，E 类地址吧：<br>A 类地址以 0 开头，第一个字节作为网络号，地址范围为：0.0.0.0~127.255.255.255；<br>B 类地址以 10 开头，前两个字节作为网络号，地址范围是：128.0.0.0~191.255.255.255；<br>C 类地址以 110 开头，前三个字节作为网络号，地址范围是：192.0.0.0~223.255.255.255。<br>D 类地址以 1110 开头，地址范围是 224.0.0.0~239.255.255.255，D 类地址作为组播地址（一对多的通信）；<br>E 类地址以 1111 开头，地址范围是 240.0.0.0~255.255.255.255，E 类地址为保留地址，供以后使用。</p><p>注：只有 A，B，C 有网络号和主机号之分，D 类地址和 E 类地址没有划分网络号和主机号。</p><h3 id="4-255-255-255-255"><a href="#4-255-255-255-255" class="headerlink" title="4. 255.255.255.255"></a>4. 255.255.255.255</h3><p>该 IP 地址指的是受限的广播地址。受限广播地址与一般广播地址（直接广播地址）的区别在于，受限广播地址只能用于本地网络，路由器不会转发以受限广播地址为目的地址的分组；一般广播地址既可在本地广播，也可跨网段广播。例如：主机 192.168.1.1/30 上的直接广播数据包后，另外一个网段 192.168.1.5/30 也能收到该数据报；若发送受限广播数据报，则不能收到。</p><p>注：一般的广播地址（直接广播地址）能够通过某些路由器（当然不是所有的路由器），而受限的广播地址不能通过路由器。</p><h3 id="5-0-0-0-0"><a href="#5-0-0-0-0" class="headerlink" title="5. 0.0.0.0"></a>5. 0.0.0.0</h3><p>常用于寻找自己的IP地址，例如在我们的 RARP，BOOTP 和 DHCP 协议中，若某个未知 IP 地址的无盘机想要知道自己的 IP 地址，它就以 255.255.255.255 为目的地址，向本地范围（具体而言是被各个路由器屏蔽的范围内）的服务器发送 IP 请求分组。</p><h3 id="6-回环地址"><a href="#6-回环地址" class="headerlink" title="6. 回环地址"></a>6. 回环地址</h3><p>127.0.0.0/8 被用作回环地址，回环地址表示本机的地址，常用于对本机的测试，用的最多的是 127.0.0.1。</p><h3 id="7-A、B、C-类私有地址"><a href="#7-A、B、C-类私有地址" class="headerlink" title="7. A、B、C 类私有地址"></a>7. A、B、C 类私有地址</h3><p>私有地址（private address）也叫专用地址，它们不会在全球使用，只具有本地意义。</p><p>A 类私有地址：10.0.0.0/8，范围是：10.0.0.0~10.255.255.255<br>B 类私有地址：172.16.0.0/12，范围是：172.16.0.0~172.31.255.255<br>C 类私有地址：192.168.0.0/16，范围是：192.168.0.0~192.168.255.255</p><h2 id="子网掩码及网络划分"><a href="#子网掩码及网络划分" class="headerlink" title="子网掩码及网络划分"></a>子网掩码及网络划分</h2><p>随着互连网应用的不断扩大，原先的 IPv4 的弊端也逐渐暴露出来，即网络号占位太多，而主机号位太少，所以其能提供的主机地址也越来越稀缺，目前除了使用 NAT 在企业内部利用保留地址自行分配以外，通常都对一个高类别的 IP 地址进行再划分，以形成多个子网，提供给不同规模的用户群使用。</p><p>这里主要是为了在网络分段情况下有效地利用IP地址，通过对主机号的高位部分取作为子网号，从通常的网络位界限中扩展或压缩子网掩码，用来创建某类地址的更多子网。但创建更多的子网时，在每个子网上的可用主机地址数目会比原先减少。</p><h3 id="什么是子网掩码？"><a href="#什么是子网掩码？" class="headerlink" title="什么是子网掩码？"></a>什么是子网掩码？</h3><p>子网掩码是标志两个 IP 地址是否同属于一个子网的，也是 32 位二进制地址，其每一个为 1 代表该位是网络位，为 0 代表主机位。它和 IP 地址一样也是使用点式十进制来表示的。如果两个 IP 地址在子网掩码的按位与的计算下所得结果相同，即表明它们共属于同一子网中。</p><p>在计算子网掩码时，我们要注意 IP 地址中的保留地址，即 “0” 地址和广播地址，它们是指主机地址或网络地址全为 “0” 或 “1” 时的 IP 地址，它们代表着本网络地址和广播地址，一般是不能被计算在内的。</p><h3 id="子网掩码的计算："><a href="#子网掩码的计算：" class="headerlink" title="子网掩码的计算："></a>子网掩码的计算：</h3><p>对于无须再划分成子网的 IP 地址来说，其子网掩码非常简单，即按照其定义即可写出：如某 B 类 IP 地址为 10.12.3.0，无须再分割子网，则该 IP 地址的子网掩码 255.255.0.0。如果它是一个 C 类地址，则其子网掩码为 255.255.255.0。其它类推，不再详述。下面我们关键要介绍的是一个 IP 地址，还需要将其高位主机位再作为划分出的子网网络号，剩下的是每个子网的主机号，这时该如何进行每个子网的掩码计算。</p><p>下面总结一下有关子网掩码和网络划分常见的面试考题：</p><h4 id="1-利用子网数来计算"><a href="#1-利用子网数来计算" class="headerlink" title="1. 利用子网数来计算"></a>1. 利用子网数来计算</h4><p>在求子网掩码之前必须先搞清楚要划分的子网数目，以及每个子网内的所需主机数目。</p><p>(1) 将子网数目转化为二进制来表示；</p><p>如欲将 B 类 IP 地址 168.195.0.0 划分成 27 个子网：27=11011；</p><p>(2) 取得该二进制的位数，为 N；</p><p>该二进制为五位数，N = 5</p><p>(3) 取得该 IP 地址的类子网掩码，将其主机地址部分的的前 N 位置 1 即得出该 IP 地址划分子网的子网掩码。</p><p>将B类地址的子网掩码 255.255.0.0 的主机地址前 5 位置 1，得到 255.255.248.0</p><h4 id="2-利用主机数来计算"><a href="#2-利用主机数来计算" class="headerlink" title="2. 利用主机数来计算"></a>2. 利用主机数来计算</h4><p>如欲将 B 类 IP 地址 168.195.0.0 划分成若干子网，每个子网内有主机 700 台：</p><p>(1) 将主机数目转化为二进制来表示；</p><p>700=1010111100；</p><p>(2) 如果主机数小于或等于 254（注意去掉保留的两个IP地址），则取得该主机的二进制位数，为 N，这里肯定 N&lt;8。如果大于 254，则 N&gt;8，这就是说主机地址将占据不止 8 位；</p><p>该二进制为十位数，N=10；</p><p>(3) 使用 255.255.255.255 来将该类 IP 地址的主机地址位数全部置 1，然后从后向前的将 N 位全部置为 0，即为子网掩码值。</p><p>将该 B 类地址的子网掩码 255.255.0.0 的主机地址全部置 1，得到 255.255.255.255，然后再从后向前将后 10 位置 0，即为：11111111.11111111.11111100.00000000，即 255.255.252.0 。这就是该欲划分成主机为 700 台的 B 类 IP 地址 168.195.0.0 的子网掩码。</p><h4 id="3-还有一种题型，要你根据每个网络的主机数量进行子网地址的规划和计算子网掩码。这也可按上述原则进行计算。"><a href="#3-还有一种题型，要你根据每个网络的主机数量进行子网地址的规划和计算子网掩码。这也可按上述原则进行计算。" class="headerlink" title="3. 还有一种题型，要你根据每个网络的主机数量进行子网地址的规划和计算子网掩码。这也可按上述原则进行计算。"></a>3. 还有一种题型，要你根据每个网络的主机数量进行子网地址的规划和计算子网掩码。这也可按上述原则进行计算。</h4><p>比如一个子网有 10 台主机，那么对于这个子网需要的 IP 地址是：</p><p>10＋1＋1＋1＝13</p><p>注意：加的第一个 1 是指这个网络连接时所需的网关地址，接着的两个 1 分别是指网络地址和广播地址。</p><p>因为 13 小于 16（16 等于 2 的 4 次方），所以主机位为 4 位。而 256－16＝240，所以该子网掩码为 255.255.255.240。</p><p>如果一个子网有 14 台主机，不少人常犯的错误是：依然分配具有 16 个地址空间的子网，而忘记了给网关分配地址。这样就错误了，因为 14＋1＋1＋1＝17 ，17 大于 16，所以我们只能分配具有 32 个地址（32 等于 2 的 5 次方）空间的子网。这时子网掩码为：255.255.255.224。</p><h2 id="ARP-RARP-协议"><a href="#ARP-RARP-协议" class="headerlink" title="ARP/RARP 协议"></a>ARP/RARP 协议</h2><p>地址解析协议，即 ARP（Address Resolution Protocol），是根据 IP 地址获取物理地址的一个 TCP/IP 协议。主机发送信息时将包含目标 IP 地址的 ARP 请求广播到网络上的所有主机，并接收返回消息，以此确定目标的物理地址；收到返回消息后将该 IP 地址和物理地址存入本机 ARP 缓存中并保留一定时间，下次请求时直接查询 ARP 缓存以节约资源。地址解析协议是建立在网络中各个主机互相信任的基础上的，网络上的主机可以自主发送 ARP 应答消息，其他主机收到应答报文时不会检测该报文的真实性就会将其记入本机 ARP 缓存；由此攻击者就可以向某一主机发送伪 ARP 应答报文，使其发送的信息无法到达预期的主机或到达错误的主机，这就构成了一个 ARP 欺骗。ARP 命令可用于查询本机 ARP 缓存中 IP 地址和 MAC 地址的对应关系、添加或删除静态对应关系等。</p><p>ARP 工作流程举例：</p><p>主机 A 的 IP 地址为 192.168.1.1，MAC 地址为 0A-11-22-33-44-01；<br>主机 B 的 IP 地址为 192.168.1.2，MAC 地址为 0A-11-22-33-44-02；<br>当主机 A 要与主机 B 通信时，地址解析协议可以将主机 B 的 IP 地址（192.168.1.2）解析成主机 B 的 MAC 地址，以下为工作流程：<br>　　（1）根据主机 A 上的路由表内容，IP 确定用于访问主机 B 的转发 IP 地址是 192.168.1.2。然后 A 主机在自己的本地 ARP 缓存中检查主机 B 的匹配 MAC 地址。<br>　　（2）如果主机 A 在 ARP 缓存中没有找到映射，它将询问 192.168.1.2 的硬件地址，从而将 ARP 请求帧广播到本地网络上的所有主机。源主机 A 的 IP 地址和 MAC 地址都包括在 ARP 请求中。本地网络上的每台主机都接收到 ARP 请求并且检查是否与自己的 IP 地址匹配。如果主机发现请求的 IP 地址与自己的 IP 地址不匹配，它将丢弃 ARP 请求。<br>　　（3）主机 B 确定 ARP 请求中的 IP 地址与自己的 IP 地址匹配，则将主机 A 的 IP 地址和 MAC 地址映射添加到本地 ARP 缓存中。<br>　　（4）主机 B 将包含其 MAC 地址的 ARP 回复消息直接发送回主机 A。<br>　　（5）当主机 A 收到从主机 B 发来的 ARP 回复消息时，会用主机 B 的 IP 和 MAC 地址映射更新 ARP 缓存。本机缓存是有生存期的，生存期结束后，将再次重复上面的过程。主机 B 的 MAC 地址一旦确定，主机 A 就能向主机 B 发送 IP 通信了。<br>逆地址解析协议，即 RARP，功能和 ARP 协议相对，其将局域网中某个主机的物理地址转换为 IP 地址，比如局域网中有一台主机只知道物理地址而不知道 IP 地址，那么可以通过 RARP 协议发出征求自身 IP 地址的广播请求，然后由 RARP 服务器负责回答。</p><p>RARP 协议工作流程：</p><p>　　（1）给主机发送一个本地的 RARP 广播，在此广播包中，声明自己的 MAC 地址并且请求任何收到此请求的 RARP 服务器分配一个 IP 地址；<br>　　（2）本地网段上的 RARP 服务器收到此请求后，检查其 RARP 列表，查找该 MAC 地址对应的 IP 地址；<br>　　（3）如果存在，RARP 服务器就给源主机发送一个响应数据包并将此 IP 地址提供给对方主机使用；<br>　　（4）如果不存在，RARP 服务器对此不做任何的响应；<br>　　（5）源主机收到从 RARP 服务器的响应信息，就利用得到的 IP 地址进行通讯；如果一直没有收到 RARP 服务器的响应信息，表示初始化失败。</p><h2 id="路由选择协议"><a href="#路由选择协议" class="headerlink" title="路由选择协议"></a>路由选择协议</h2><p>常见的路由选择协议有：RIP 协议、OSPF 协议。</p><p>RIP 协议 ：底层是贝尔曼福特算法，它选择路由的度量标准（metric)是跳数，最大跳数是15跳，如果大于15跳，它就会丢弃数据包。</p><p>OSPF 协议 ：Open Shortest Path First 开放式最短路径优先，底层是迪杰斯特拉算法，是链路状态路由选择协议，它选择路由的度量标准是带宽，延迟。</p><h2 id="TCP-IP-协议"><a href="#TCP-IP-协议" class="headerlink" title="TCP/IP 协议"></a>TCP/IP 协议</h2><p>TCP/IP 协议是 Internet 最基本的协议、Internet 国际互联网络的基础，由网络层的 IP 协议和传输层的 TCP 协议组成。通俗而言：TCP 负责发现传输的问题，一有问题就发出信号，要求重新传输，直到所有数据安全正确地传输到目的地。而IP是给因特网的每一台联网设备规定一个地址。<br>IP 层接收由更低层（网络接口层例如以太网设备驱动程序）发来的数据包，并把该数据包发送到更高层— TCP 或 UDP 层；相反，IP 层也把从 TCP 或 UDP 层接收来的数据包传送到更低层。IP 数据包是不可靠的，因为 IP 并没有做任何事情来确认数据包是否按顺序发送的或者有没有被破坏，IP 数据包中含有发送它的主机的地址（源地址）和接收它的主机的地址（目的地址）。<br>TCP 是面向连接的通信协议，通过三次握手建立连接，通讯完成时要拆除连接，由于 TCP 是面向连接的所以只能用于端到端的通讯。TCP 提供的是一种可靠的数据流服务，采用“带重传的肯定确认”技术来实现传输的可靠性。TCP 还采用一种称为“滑动窗口”的方式进行流量控制，所谓窗口实际表示接收能力，用以限制发送方的发送速度。</p><p>TCP 报文首部格式：</p><p><img src="https://i.loli.net/2017/09/20/59c24b34af7cf.jpg" alt></p><p>TCP 协议的三次握手和四次挥手：</p><p><img src="https://i.loli.net/2017/09/20/59c24b63b0fd2.jpg" alt></p><p>注：seq:”sequence”序列号；ack:”acknowledge”确认号；SYN:”synchronize”请求同步标志；；ACK:”acknowledge”确认标志”；FIN：”Finally”结束标志。</p><p>TCP 连接建立过程：首先 Client 端发送连接请求报文，Server 段接受连接后回复 ACK 报文，并为这次连接分配资源。Client 端接收到 ACK 报文后也向 Server 段发生 ACK 报文，并分配资源，这样 TCP 连接就建立了。</p><p>TCP 连接断开过程：假设 Client 端发起中断连接请求，也就是发送 FIN 报文。Server 端接到 FIN 报文后，意思是说<u>“我 Client 端没有数据要发给你了”</u>，但是如果你还有数据没有发送完成，则不必急着关闭 Socket，可以继续发送数据。所以你先发送 ACK，<u>“告诉 Client 端，你的请求我收到了，但是我还没准备好，请继续你等我的消息”</u>。这个时候 Client 端就进入 FIN_WAIT 状态，继续等待 Server 端的 FIN 报文。当 Server 端确定数据已发送完成，则向 Client 端发送 FIN 报文，<u>“告诉 Client 端，好了，我这边数据发完了，准备好关闭连接了”</u>。Client 端收到 FIN 报文后，<u>“就知道可以关闭连接了，但是他还是不相信网络，怕 Server 端不知道要关闭，所以发送 ACK 后进入 TIME_WAIT 状态，如果 Server 端没有收到 ACK 则可以重传。“</u>，Server 端收到 ACK 后，”就知道可以断开连接了”。Client 端等待了 2MSL 后依然没有收到回复，则证明 <u>Server 端已正常关闭，那好，我 Client 端也可以关闭连接了</u>。Ok，TCP 连接就这样关闭了！</p><h3 id="为什么要三次握手？"><a href="#为什么要三次握手？" class="headerlink" title="为什么要三次握手？"></a>为什么要三次握手？</h3><p>在只有两次“握手”的情形下，假设 Client 想跟 Server 建立连接，但是却因为中途连接请求的数据报丢失了，故 Client 端不得不重新发送一遍；这个时候 Server 端仅收到一个连接请求，因此可以正常的建立连接。但是，有时候 Client 端重新发送请求不是因为数据报丢失了，而是有可能数据传输过程因为网络并发量很大在某结点被阻塞了，这种情形下 Server 端将先后收到 2 次请求，并持续等待两个 Client 请求向他发送数据…问题就在这里，Cient 端实际上只有一次请求，而 Server 端却有 2 个响应，极端的情况可能由于 Client 端多次重新发送请求数据而导致 Server 端最后建立了 N 多个响应在等待，因而造成极大的资源浪费！所以，“三次握手”很有必要！</p><h3 id="为什么要四次挥手？"><a href="#为什么要四次挥手？" class="headerlink" title="为什么要四次挥手？"></a>为什么要四次挥手？</h3><p>试想一下，假如现在你是客户端你想断开跟 Server 的所有连接该怎么做？第一步，你自己先停止向 Server 端发送数据，并等待 Server 的回复。但事情还没有完，虽然你自身不往 Server 发送数据了，但是因为你们之前已经建立好平等的连接了，所以此时他也有主动权向你发送数据；故 Server 端还得终止主动向你发送数据，并等待你的确认。其实，说白了就是保证双方的一个合约的完整执行！</p><p>使用 TCP 的协议：FTP（文件传输协议）、Telnet（远程登录协议）、SMTP（简单邮件传输协议）、POP3（和 SMTP 相对，用于接收邮件）、HTTP 协议等。</p><h2 id="UDP-协议"><a href="#UDP-协议" class="headerlink" title="UDP 协议　"></a>UDP 协议　</h2><p>UDP 用户数据报协议，是面向无连接的通讯协议，UDP 数据包括目的端口号和源端口号信息，由于通讯不需要连接，所以可以实现广播发送。UDP 通讯时不需要接收方确认，属于不可靠的传输，可能会出现丢包现象，实际应用中要求程序员编程验证。<br>UDP 与 TCP 位于同一层，但它不管数据包的顺序、错误或重发。因此，UDP 不被应用于那些使用虚电路的面向连接的服务，UDP 主要用于那些面向查询 ——— 应答的服务，例如 NFS。相对于 FTP 或 Telnet，这些服务需要交换的信息量较小。<br>每个 UDP 报文分 UDP 报头和 UDP 数据区两部分。报头由四个 16 位长（2 字节）字段组成，分别说明该报文的源端口、目的端口、报文长度以及校验值。UDP 报头由 4 个域组成，其中每个域各占用 2 个字节，具体如下：<br>　　（1）源端口号；<br>　　（2）目标端口号；<br>　　（3）数据报长度；<br>　　（4）校验值。<br>使用 UDP 协议包括：TFTP（简单文件传输协议）、SNMP（简单网络管理协议）、DNS（域名解析协议）、NFS、BOOTP。<br>TCP 与 UDP 的区别：TCP 是面向连接的，可靠的字节流服务；UDP 是面向无连接的，不可靠的数据报服务。</p><h2 id="DNS-协议"><a href="#DNS-协议" class="headerlink" title="DNS 协议"></a>DNS 协议</h2><p>DNS 是域名系统（Domain Name System）的缩写，该系统用于命名组织到域层次结构中的计算机和网络服务，可以简单地理解为将 URL 转换为 IP 地址。域名是由圆点分开一串单词或缩写组成的，每一个域名都对应一个惟一的 IP 地址，在 Internet 上域名与 IP 地址之间是一一对应的，DNS 就是进行域名解析的服务器。DNS 命名用于 Internet 等 TCP/IP 网络中，通过用户友好的名称查找计算机和服务。</p><h2 id="NAT-协议"><a href="#NAT-协议" class="headerlink" title="NAT 协议"></a>NAT 协议</h2><p>NAT 网络地址转换（Network Address Translation）属接入广域网（WAN）技术，是一种将私有（保留）地址转化为合法 IP 地址的转换技术，它被广泛应用于各种类型 Internet 接入方式和各种类型的网络中。原因很简单，NAT 不仅完美地解决了lP地址不足的问题，而且还能够有效地避免来自网络外部的攻击，隐藏并保护网络内部的计算机。</p><h2 id="DHCP-协议"><a href="#DHCP-协议" class="headerlink" title="DHCP 协议"></a>DHCP 协议</h2><p>DHCP 动态主机设置协议（Dynamic Host Configuration Protocol）是一个局域网的网络协议，使用 UDP 协议工作，主要有两个用途：给内部网络或网络服务供应商自动分配 IP 地址，给用户或者内部网络管理员作为对所有计算机作中央管理的手段。</p><h2 id="HTTP-协议"><a href="#HTTP-协议" class="headerlink" title="HTTP 协议"></a>HTTP 协议</h2><p>超文本传输协议（HTTP，HyperText Transfer Protocol）是互联网上应用最为广泛的一种网络协议。所有的 WWW 文件都必须遵守这个标准。</p><p>HTTP 协议包括哪些请求？</p><p>GET：请求读取由 URL 所标志的信息。</p><p>POST：给服务器添加信息（如注释）。</p><p>PUT：在给定的 URL 下存储一个文档。</p><p>DELETE：删除给定的 URL 所标志的资源。</p><p>HTTP 中， POST 与 GET 的区别</p><p>　　1）Get 是从服务器上获取数据，Post 是向服务器传送数据。</p><p>　　2）Get 是把参数数据队列加到提交表单的 Action 属性所指向的 URL 中，值和表单内各个字段一一对应，在 URL 中可以看到。</p><p>　　3）Get 传送的数据量小，不能大于 2KB；Post 传送的数据量较大，一般被默认为不受限制。</p><p>　　4）根据 HTTP 规范，GET 用于信息获取，而且应该是安全的和幂等的。</p><p>　　I. 所谓安全的，意味着该操作用于获取信息而非修改信息。换句话说，GET 请求一般不应产生副作用。就是说，它仅仅是获取资源信息，就像数据库查询一样，不会修改，增加数据，不会影响资源的状态。</p><p>　　II. 幂等的意味着对同一 URL 的多个请求应该返回同样的结果。</p><h2 id="HTTPS-协议"><a href="#HTTPS-协议" class="headerlink" title="HTTPS 协议"></a>HTTPS 协议</h2><p>超文本传输安全协议（英语：Hypertext Transfer Protocol Secure，缩写：HTTPS，常称为 HTTP over TLS，HTTP over SSL或HTTP Secure）是一种通过计算机网络进行安全通信的传输协议。HTTPS 经由 HTTP 进行通信，但利用 SSL/TLS 来加密数据包。HTTPS 开发的主要目的，是提供对网站服务器的身份认证，保护交换数据的隐私与完整性。</p><p>HTTPS 的主要思想是在不安全的网络上创建一安全信道，并可在使用适当的加密包和服务器证书可被验证且可被信任时，对窃听和中间人攻击提供合理的防护。</p><p>HTTPS 的信任继承基于预先安装在浏览器中的证书颁发机构（如 Symantec、Comodo、GoDaddy 和 GlobalSign 等）（意即“我信任证书颁发机构告诉我应该信任的”）。因此，一个到某网站的 HTTPS 连接可被信任，当且仅当：</p><ul><li>用户相信他们的浏览器正确实现了 HTTPS 且安装了正确的证书颁发机构；</li><li>用户相信证书颁发机构仅信任合法的网站；</li><li>被访问的网站提供了一个有效的证书，意即，它是由一个被信任的证书颁发机构签发的（大部分浏览器会对无效的证书发出警告）；</li><li>该证书正确地验证了被访问的网站（如，访问 <a href="https://example.com" target="_blank" rel="noopener">https://example.com</a> 时收到了给 example.com 而不是其它组织的证书）；</li><li>或者互联网上相关的节点是值得信任的，或者用户相信本协议的加密层（TLS 或 SSL）不能被窃听者破坏。</li></ul><h2 id="SSL-TLS-协议"><a href="#SSL-TLS-协议" class="headerlink" title="SSL/TLS 协议"></a>SSL/TLS 协议</h2><p>传输层安全协议（英语：Transport Layer Security，缩写：TLS），及其前身安全套接层（Secure Sockets Layer，缩写：SSL）是一种安全协议，目的是为互联网通信，提供安全及数据完整性保障。</p><p>TLS 协议采用主从式架构模型，其目的在于提供两个应用程序间，通过网络的一个不安全通道，创建起安全的连接，来交换数据，防止数据受到窃听及篡改。</p><p>TLS 协议的优势在于它是与应用层协议独立无关的。高层的应用层协议（例如：HTTP、FTP、Telnet 等等）能透明的创建于 TLS 协议之上。TLS 协议在应用层协议通信之前就已经完成加密算法、通信密钥的协商以及服务器认证工作。在此之后应用层协议所传送的数据都会被加密，从而保证通信的私密性。</p><p>TLS 协议是可选的，所以如果需要使用就必须配置客户端和服务器，有两种主要方式实现这一目标：一个是使用统一的 TLS 协议通信端口（例如：用于 HTTPS 的端口443）；另一个是客户端请求服务器连接到 TLS 时使用特定的协议机制（例如：邮件、新闻协议和 STARTTLS）。一旦客户端和服务器都同意使用 TLS 协议，他们通过使用一个握手过程协商出一个有状态的连接以传输数据。通过握手，客户端和服务器协商各种参数用于创建安全连接：</p><ul><li>当客户端连接到支持 TLS 协议的服务器要求创建安全连接并列出了受支持的密码组合（加密密码算法和加密哈希函数），握手开始。</li><li>服务器从该列表中决定加密和散列函数，并通知客户端。</li><li>服务器发回其数字证书，此证书通常包含服务器的名称、受信任的证书颁发机构（CA）和服务器的公钥。</li><li>客户端确认其颁发的证书的有效性。</li><li>为了生成会话密钥用于安全连接，客户端使用服务器的公钥加密随机生成的密钥，并将其发送到服务器，只有服务器才能使用自己的私钥解密。</li><li>利用随机数，双方生成用于加密和解密的对称密钥。这就是 TLS 协议的握手，握手完毕后的连接是安全的，直到连接（被）关闭。如果上述任何一个步骤失败，TLS 握手过程就会失败，并且断开所有的连接。</li></ul><h2 id="HTTP-与-HTTPS-区别"><a href="#HTTP-与-HTTPS-区别" class="headerlink" title="HTTP 与 HTTPS 区别"></a>HTTP 与 HTTPS 区别</h2><ol><li>与 HTTP 的 URL 由 “http://”起始且默认使用端口 80 不同，HTTPS 的 URL 由“https://”起始且默认使用端口 443；</li><li>HTTP 是不安全的，且攻击者通过监听和中间人攻击等手段，可以获取网站帐户和敏感信息等。HTTPS 被设计为可防止前述攻击，并在正确配置时被认为是安全的；</li><li>传输效率上 HTTP 要高于 HTTPS ，因为 HTTPS 需要经过加密过程，过程相比于 HTTP 要繁琐一点，效率上低一些也很正常；</li><li>HTTP 无需证书，而 HTTPS 必需要认证证书；</li><li>从 SEO 方面来参考，发现百度和谷歌是不同的。谷歌在 HTTPS 站点的收录问题上与对 HTTP 站点态度并无什么不同之处，甚至把“是否使用安全加密”（HTTPS）作为搜索排名算法中的一个参考因素，采用 HTTPS 加密技术的网站能得到更多的展示机会。百度曾表示不主动抓取 HTTPS 网页，所以目前采取 HTTPS 的网站是很难被百度收录的，不过有消息称百度接下来可能会向谷歌靠拢，对于 HTTPS 页面同样主动抓取。</li></ol><p><span id="Cloudflare"></span></p><h1 id="具体操作"><a href="#具体操作" class="headerlink" title="具体操作"></a>具体操作</h1><h2 id="Cloudflare"><a href="#Cloudflare" class="headerlink" title="Cloudflare"></a>Cloudflare</h2><blockquote><p>Here at Cloudflare, we make the Internet work the way it should. Offering CDN, DNS, DDoS protection and security, find out how we can help your site.</p></blockquote><p>可以在其官网了解到它是一家提供内容分发网络（CDN）、防止分布式阻断服务攻击（DDoS）服务的 IT 企业，同时它还提供了分布式域名服务，这也意味着我们可以利用它们的网络来设置 HTTPS。</p><p><img src="https://i.loli.net/2017/09/20/59c210a8bfc1d.png" alt></p><p>打开 <a href="https://www.cloudflare.com/" target="_blank" rel="noopener">Cloudflare官网</a> 并注册，成功之后可以看到一个引导页面，根据提示操作：</p><h2 id="1-Add-Websites"><a href="#1-Add-Websites" class="headerlink" title="1. Add Websites"></a>1. Add Websites</h2><p><img src="https://i.loli.net/2017/09/20/59c211208615e.png" alt></p><p>在输入框中输入网站的域名，如果有多个，可以使用逗号（英文半角） <code>,</code> 进行分割。</p><p>点击 <code>Begin Scan</code> 按钮 Cloudflare 会自动扫描输入域名的 DNS 记录以验证域名的真实性并检查其公开信息。</p><h2 id="2-Add-DNS-Records"><a href="#2-Add-DNS-Records" class="headerlink" title="2. Add DNS Records"></a>2. Add DNS Records</h2><p><img src="https://i.loli.net/2017/09/20/59c2129489b11.png" alt></p><p>Cloudflare 会将扫描到的 DNS 记录展示在页面上供你查看，如果记录符合 Cloudflare 的要求，会在记录的 Status 中显示一个橙色的云图标，如果没有则需要自己添加需要的 DNS 记录。确定无误后点击 <code>Continue</code> 按钮进行下一步：</p><h2 id="3-Select-Plan"><a href="#3-Select-Plan" class="headerlink" title="3. Select Plan"></a>3. Select Plan</h2><p><img src="https://i.loli.net/2017/09/20/59c212a1af63f.png" alt></p><p>选择一个方案，由于我们只需要 HTTPS 那么免费版就够用了，如果你还需要其他高级服务可以根据自己需求选择付费方案。</p><h2 id="4-Update-Nameservers"><a href="#4-Update-Nameservers" class="headerlink" title="4. Update Nameservers"></a>4. Update Nameservers</h2><p><img src="https://i.loli.net/2017/09/20/59c2131c54f5d.png" alt></p><p>这一步， Cloudflare 给我们提供了新的 DNS 服务器地址，我们要做的就是在域名注册商的域名设置中将之前的 DNS 服务器地址替换为新的。如果你的域名在 GoDaddy 购买，有疑问可以查看 <a href="https://sg.godaddy.com/zh/help/godaddy-12316" target="_blank" rel="noopener">GoDaddy 相关指南</a>。</p><p>接下来要做的就是等待 Cloudflare 将你的域名映射到它的服务器上，不过这一步一般耗时不久。</p><h2 id="5-Enable-HTTPS"><a href="#5-Enable-HTTPS" class="headerlink" title="5. Enable HTTPS"></a>5. Enable HTTPS</h2><p>点击 Crypto：</p><p><img src="https://i.loli.net/2017/09/20/59c225a0d07e4.png" alt></p><p>确认 SSL 证书处于激活状态：</p><p><img src="https://i.loli.net/2017/09/20/59c2266bb47f5.png" alt></p><p>关于 SSL 证书的选项可以查看 <a href="https://support.cloudflare.com/hc/en-us/articles/200170416" target="_blank" rel="noopener">Cloudflare Support</a> 。</p><p>开启 <code>Always use HTTPS</code>选项：</p><p><img src="https://i.loli.net/2017/09/20/59c225a15dfc7.png" alt></p><p>此时，任何来自浏览器的 HTTP 请求都会被切换为 HTTPS。</p><h2 id="6-Create-Page-Rules"><a href="#6-Create-Page-Rules" class="headerlink" title="6. Create Page Rules"></a>6. Create Page Rules</h2><p>如果证书处于激活状态，在主菜单中点击 <code>Page Rules</code> 按钮，切换到 <code>Page Rules</code> 页面：</p><p><img src="https://i.loli.net/2017/09/20/59c2288861274.png" alt></p><p>点击 <code>Create Page Rule</code> 进行创建：</p><p><img src="https://i.loli.net/2017/09/20/59c228e24a62a.png" alt></p><p>（其中需将 <code>ultrarex.com</code> 替换为你的域名）</p><p>点击 <code>Save and Deploy</code> 按钮，至此恭喜你现在拥有了一个 HTTPS 网站。</p><h2 id="7-Use-CDN-optional"><a href="#7-Use-CDN-optional" class="headerlink" title="7. Use CDN (optional)"></a>7. Use CDN (optional)</h2><p>还可以利用 Cloudflare 的 CDN 服务来帮助我们优化网站的性能。点击 <code>Speed</code> 按钮你可以根据需要进行相关设置。</p><h2 id="8-Other"><a href="#8-Other" class="headerlink" title="8. Other"></a>8. Other</h2><p>为了保证全站 HTTPS 访问，在引用外部资源的时候，也要确保外部资源是安全的，即外部资源也为 HTTPS 源。</p><h1 id="参考"><a href="#参考" class="headerlink" title="参考"></a>参考</h1><ol><li><a href="http://www.cnblogs.com/maybe2030/" target="_blank" rel="noopener">计算机网络基础知识总结</a></li><li><a href="http://www.jianshu.com/p/edfa59405048" target="_blank" rel="noopener">帮你理解 HTTP 和 HTTPS 的区别</a></li><li><a href="https://juejin.im/post/59b129365188253da63829ad" target="_blank" rel="noopener">低成本将你的网站切换为 HTTPS</a></li></ol><p>EOF</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;写在前面&quot;&gt;&lt;a href=&quot;#写在前面&quot; class=&quot;headerlink&quot; title=&quot;写在前面&quot;&gt;&lt;/a&gt;写在前面&lt;/h1&gt;&lt;p&gt;既然提到 HTTPS 我觉得有必要回顾梳理下相关计算机网络知识，便于自己的记忆理解，温故而知新。如果想直接进入正文请 &lt;a 
+      
+    
+    </summary>
+    
+      <category term="网站" scheme="https://ultrarex.com/categories/%E7%BD%91%E7%AB%99/"/>
+    
+    
+      <category term="网站" scheme="https://ultrarex.com/tags/%E7%BD%91%E7%AB%99/"/>
+    
+      <category term="HTTPS" scheme="https://ultrarex.com/tags/HTTPS/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>使用 Hexo 在 GitHub Pages 上自建博客</title>
+    <link href="https://ultrarex.com/p/e896.html"/>
+    <id>https://ultrarex.com/p/e896.html</id>
+    <published>2017-09-18T07:29:35.000Z</published>
+    <updated>2019-04-27T11:15:00.207Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="写在前面"><a href="#写在前面" class="headerlink" title="写在前面"></a>写在前面</h1><h2 id="为什么需要自建博客？"><a href="#为什么需要自建博客？" class="headerlink" title="为什么需要自建博客？"></a>为什么需要自建博客？</h2><p><img src="https://i.loli.net/2017/09/18/59bf894a96288.jpg" alt="from Zoommy"></p><p>一个词 —— 自由。由于众所周知的原因，你在任何平台上（例如：微博等）发布的内容一旦涉及到某些关键词，就会触发审查机制，轻则被 * 类的符号过滤掉，重则直接删帖。请注意我并不反对内容审查，但反对不透明的内容审查。</p><h2 id="什么是-Hexo？"><a href="#什么是-Hexo？" class="headerlink" title="什么是 Hexo？"></a>什么是 Hexo？</h2><p><img src="https://ooo.0o0.ooo/2017/09/18/59bf90516ebda.png" alt></p><blockquote><p>Hexo 是一个快速、简洁且高效的博客框架。其使用 <a href="http://daringfireball.net/projects/markdown/" target="_blank" rel="noopener">Markdown</a>（或其他渲染引擎）解析文章，在几秒内，即可利用靓丽的主题生成静态网页。</p><p>引用自 <a href="https://hexo.io/zh-cn/" target="_blank" rel="noopener">Hexo 官网</a> </p></blockquote><h3 id="Hexo-特点："><a href="#Hexo-特点：" class="headerlink" title="Hexo 特点："></a>Hexo 特点：</h3><h4 id="1-超快速度"><a href="#1-超快速度" class="headerlink" title="1. 超快速度"></a>1. 超快速度</h4><blockquote><p>Node.js 所带来的超快生成速度，让上百个页面在几秒内瞬间完成渲染。</p></blockquote><h4 id="2-支持-Markdown"><a href="#2-支持-Markdown" class="headerlink" title="2. 支持 Markdown"></a>2. 支持 Markdown</h4><blockquote><p>Hexo 支持 GitHub Flavored Markdown 的所有功能，甚至可以整合 Octopress 的大多数插件。</p></blockquote><h4 id="3-一键部署"><a href="#3-一键部署" class="headerlink" title="3. 一键部署"></a>3. 一键部署</h4><blockquote><p>只需一条指令即可部署到 GitHub Pages, Heroku 或其他网站。</p></blockquote><h4 id="4-丰富的插件"><a href="#4-丰富的插件" class="headerlink" title="4. 丰富的插件"></a>4. 丰富的插件</h4><blockquote><p>Hexo 拥有强大的插件系统，安装插件可以让 Hexo 支持 Jade, CoffeeScript。</p></blockquote><h2 id="什么是-GitHub-Pages？"><a href="#什么是-GitHub-Pages？" class="headerlink" title="什么是 GitHub Pages？"></a>什么是 GitHub Pages？</h2><p><img src="https://i.loli.net/2017/09/18/59bf90c61021a.png" alt></p><p><a href="https://pages.github.com/" target="_blank" rel="noopener">Github Pages</a> 是面向用户、组织和项目开放的公共静态页面搭建托管服务，站点可以被免费托管在 Github 上，你可以选择使用 Github Pages 默认提供的域名 github.io 或者自定义域名来发布站点。</p><p>每个帐号只能有一个仓库来存放个人主页，而且仓库的名字必须是 username/username.github.io，这是特殊的命名约定。你可以通过 <a href="http://username.github.io" target="_blank" rel="noopener">http://username.github.io</a> 来访问你的个人主页。</p><h1 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h1><h2 id="1-配置环境"><a href="#1-配置环境" class="headerlink" title="1. 配置环境"></a>1. 配置环境</h2><h3 id="安装-Hexo"><a href="#安装-Hexo" class="headerlink" title="安装 Hexo"></a>安装 Hexo</h3><p>安装 Hexo 相当简单，但是其依赖以下应用程序：</p><ol><li>安装 <a href="http://git-scm.com/" target="_blank" rel="noopener">Git</a></li><li>安装 <a href="http://nodejs.org/" target="_blank" rel="noopener">Node.js</a></li></ol><p>如果你的电脑中已经安装上述必备程序，那么恭喜你！接下来只需要使用 npm 即可完成 Hexo 的安装。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install -g hexo-cli</span><br></pre></td></tr></table></figure><p>如果你的电脑中尚未安装所需要的程序，请根据以下安装指示完成安装。</p><blockquote><p>Mac 用户<br>你在编译时可能会遇到问题，请在终端中执行 <code>xcode-select --install</code> 命令并根据提示安装命令行工具。</p></blockquote><h4 id="安装-Git"><a href="#安装-Git" class="headerlink" title="安装 Git"></a>安装 Git</h4><ul><li>Windows：下载并安装 <a href="https://git-scm.com/download/win" target="_blank" rel="noopener">git</a>。</li><li>Mac：使用 <a href="http://mxcl.github.com/homebrew/" target="_blank" rel="noopener">Homebrew</a>， <a href="http://www.macports.org/" target="_blank" rel="noopener">MacPorts</a> ：<code>brew install git</code>；或下载 <a href="http://sourceforge.net/projects/git-osx-installer/" target="_blank" rel="noopener">安装程序</a> 安装。</li><li>Linux (Ubuntu, Debian)：<code>sudo apt-get install git-core</code></li><li>Linux (Fedora, Red Hat， CentOS)：<code>sudo yum install git-core</code></li></ul><blockquote><p>Windows 用户<br>由于众所周知的原因，从上面的链接下载 git for windows 最好挂上一个代理，否则下载速度十分缓慢。也可以参考<a href="https://github.com/waylau/git-for-win" target="_blank" rel="noopener">这个页面</a>，收录了存储于百度云的下载地址。</p></blockquote><h4 id="安装-Node-js"><a href="#安装-Node-js" class="headerlink" title="安装 Node.js"></a>安装 Node.js</h4><p>安装 Node.js 的最佳方式是使用 <a href="https://github.com/creationix/nvm" target="_blank" rel="noopener">nvm</a>。</p><p>cURL:</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl https://raw.github.com/creationix/nvm/master/install.sh | sh</span><br></pre></td></tr></table></figure><p>Wget:</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">wget -qO- https://raw.github.com/creationix/nvm/master/install.sh | sh</span><br></pre></td></tr></table></figure><p>安装完成后，重启终端并执行下列命令即可安装 Node.js。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">nvm install stable</span><br></pre></td></tr></table></figure><p>或者你也可以下载 <a href="http://nodejs.org/" target="_blank" rel="noopener">安装程序</a> 来安装。</p><blockquote><p>Windows 用户<br>对于 windows 用户来说，建议使用安装程序进行安装。安装时，请勾选 Add to PATH 选项。<br>另外，你也可以使用 Git Bash ，这是 git for windows 自带的一组程序，提供了 Linux 风格的 shell ，在该环境下，你可以直接用上面提到的命令来安装 Node.js 。打开它的方法很简单，在任意位置单击右键，选择 “Git Bash Here” 即可。由于 Hexo 的很多操作都涉及到命令行，你可以考虑始终使用 Git Bash 来进行操作。</p></blockquote><p>安装 Hexo 完成后，请执行下列命令，Hexo 将会在指定文件夹中新建所需要的文件。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">hexo init &lt;folder&gt;</span><br><span class="line"><span class="built_in">cd</span> &lt;folder&gt;</span><br><span class="line">npm install</span><br></pre></td></tr></table></figure><p><img src="https://i.loli.net/2017/09/18/59bf97c02b08a.png" alt></p><p>新建完成后，指定文件夹的目录如下：</p><p><img src="https://i.loli.net/2017/09/18/59bf97fbd4a8b.png" alt></p><h2 id="2-主题设置"><a href="#2-主题设置" class="headerlink" title="2. 主题设置"></a>2. 主题设置</h2><p>Hexo 安装主题的方式非常简单，只需要将主题文件拷贝至站点目录的 themes 目录下， 然后修改下配置文件即可。这里以 <a href="http://theme-next.iissnan.com/" target="_blank" rel="noopener">NexT</a> 主题为例进行说明。</p><h3 id="安装主题"><a href="#安装主题" class="headerlink" title="安装主题"></a>安装主题</h3><p>如果你熟悉 Git， 建议你使用 <code>克隆最新版本</code> 的方式，之后的更新可以通过 <code>git pull</code> 来快速更新，而不用再次下载压缩包替换。</p><p>在终端窗口下，定位到 Hexo 站点目录下。使用 Git checkout 代码：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">cd</span> your-hexo-site</span><br><span class="line">git <span class="built_in">clone</span> https://github.com/iissnan/hexo-theme-next themes/next</span><br></pre></td></tr></table></figure><p>如果不熟悉 Git 也没有关系，你可以下载主题的压缩包解压到站点目录的 themes 目录下即可：</p><ol><li>前往 NexT 版本 <a href="https://github.com/iissnan/hexo-theme-next/releases" target="_blank" rel="noopener">发布页面</a>。</li><li>选择你所需要的版本，下载 Download 区域下的 Source Code (zip) 到本地。例如，下载 v5.1.2 版本：<img src="https://i.loli.net/2017/09/18/59bf9b006e946.png" alt></li><li>解压所下载的压缩包至站点的 themes 目录下， 并将 解压后的文件夹名称（hexo-theme-next-5.1.2）更改为 next。</li></ol><h3 id="启用主题"><a href="#启用主题" class="headerlink" title="启用主题"></a>启用主题</h3><p>打开 <code>站点配置文件</code>， 找到 <code>theme</code> 字段，并将其值更改为 <code>next</code> 即可。</p><h3 id="验证主题"><a href="#验证主题" class="headerlink" title="验证主题"></a>验证主题</h3><p>首先启动 Hexo 本地站点，并开启调试模式（即加上 –debug），整个命令是 <code>hexo s --debug</code>。 在服务启动的过程，注意观察命令行输出是否有任何异常信息，如果你碰到问题，这些信息将帮助他人更好的定位错误。 当命令行输出中提示出：<br><code>INFO  Hexo is running at http://0.0.0.0:4000/. Press Ctrl+C to stop.</code></p><p>此时即可使用浏览器访问 <a href="http://localhost:4000" target="_blank" rel="noopener">http://localhost:4000</a>，检查站点是否正确运行。</p><blockquote><p>当你看到站点的外观与下图所示类似时即说明你已成功安装 NexT 主题。这是 NexT 默认的 Scheme —— Muse</p></blockquote><p><img src="https://i.loli.net/2017/09/18/59bf9c0a32dd3.png" alt></p><h3 id="设置-语言"><a href="#设置-语言" class="headerlink" title="设置 语言"></a>设置 语言</h3><p>编辑 <code>站点配置文件</code>， 将 <code>language</code> 设置成你所需要的语言，如：<code>language: zh-Hans</code>。</p><h2 id="3-GitHub-Pages-设置"><a href="#3-GitHub-Pages-设置" class="headerlink" title="3. GitHub Pages 设置"></a>3. GitHub Pages 设置</h2><h3 id="注册-GitHub-账户"><a href="#注册-GitHub-账户" class="headerlink" title="注册 GitHub 账户"></a>注册 GitHub 账户</h3><p><img src="https://i.loli.net/2017/09/18/59bf9d30d5d46.png" alt></p><p>登录其 <a href="https://github.com/" target="_blank" rel="noopener">官网</a> 完成注册工作。</p><h3 id="关联-Github"><a href="#关联-Github" class="headerlink" title="关联 Github"></a>关联 Github</h3><h4 id="添加-SSH-key-到-GitHub"><a href="#添加-SSH-key-到-GitHub" class="headerlink" title="添加 SSH key 到 GitHub"></a>添加 SSH key 到 GitHub</h4><h5 id="检查-SSH-keys-是否存在-GitHub"><a href="#检查-SSH-keys-是否存在-GitHub" class="headerlink" title="检查 SSH keys 是否存在 GitHub"></a>检查 SSH keys 是否存在 GitHub</h5><p>首先执行如下指令检查 SSH keys 是否存在。如果有文件 id_rsa.pub 或 id_dsa.pub，则将 SSH key 添加到 GitHub 中，否则生成新的 SSH key 。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ls -al ~/.ssh</span><br></pre></td></tr></table></figure><h5 id="生成新的-SSH-key"><a href="#生成新的-SSH-key" class="headerlink" title="生成新的 SSH key"></a>生成新的 SSH key</h5><p>执行如下指令生成 public/private rsa key pair，注意将 <a href="mailto:`your_email@example.com" target="_blank" rel="noopener">`your_email@example.com</a>` 换成你自己注册 GitHub 的邮箱地址。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ssh-keygen -t rsa -C <span class="string">"your_email@example.com"</span></span><br></pre></td></tr></table></figure><h5 id="将-SSH-key-添加到-GitHub-中"><a href="#将-SSH-key-添加到-GitHub-中" class="headerlink" title="将 SSH key 添加到 GitHub 中"></a>将 SSH key 添加到 GitHub 中</h5><p>打开 id_rsa.pub 文件，里面的信息即为 SSH key，将这些信息复制到 GitHub 的 Add SSH key 页面即可。<br>进入Github –&gt; Settings –&gt; SSH and GPG keys -&gt; SSH keys –&gt; New SSH key:<br>Title 里任意添一个标题，将复制的内容粘贴到 Key 里，点击下方 Add key 绿色按钮即可。</p><h3 id="创建-GitHub-Pages"><a href="#创建-GitHub-Pages" class="headerlink" title="创建 GitHub Pages"></a>创建 GitHub Pages</h3><p>创建 Pages 仓库，名为 <code>yourName.github.io</code> 固定写法，如 <code>blog.github.io</code>。</p><p><img src="https://i.loli.net/2017/09/18/59bfaa8fe52a6.png" alt></p><p>创建成功：</p><p><img src="https://i.loli.net/2017/09/18/59bfaae37e7bc.png" alt></p><p>更改 GitHub Pages 设置</p><p><img src="https://i.loli.net/2017/09/18/59bfaaf32a4b9.png" alt></p><p>更改 source 为博客所在 Git 分支，确定之后会生成一个链接，即为 GitHub Pages 的访问链接。</p><p>回到仓库页面，点击 Clone or download 按钮复制仓库地址，例如 <a href="https://github.com/YourName/blog.gothub.io.git" target="_blank" rel="noopener">https://github.com/YourName/blog.gothub.io.git</a> 并打开 <code>站点配置文件</code>， 找到 <code>deploy</code> 字段，修改为如下：</p><p><img src="https://i.loli.net/2017/09/18/59bfb169c91db.png" alt></p><blockquote><p>注意：在配置所有的 _config.yml 文件时（包括 theme 中的），在所有的冒号 : 后边都要加一个空格，否则执行hexo命令会报错</p></blockquote><h3 id="生成静态页面并部署"><a href="#生成静态页面并部署" class="headerlink" title="生成静态页面并部署"></a>生成静态页面并部署</h3><p>在博客根目录执行如下指令：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo generate或者：hexo g</span><br></pre></td></tr></table></figure><p>会生成一个静态网站（第一次会生成一个 public 目录），这个静态文件可以直接访问。</p><p>若出现以下错误：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ERROR Local hexo not found <span class="keyword">in</span> YourBlogFloder</span><br><span class="line">ERROR Try runing: <span class="string">'npm install hexo --save'</span></span><br></pre></td></tr></table></figure><p>则执行命令：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo --save</span><br></pre></td></tr></table></figure><p>再执行配置命令：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo deploy或者：hexo d</span><br></pre></td></tr></table></figure><p><code>hexo deploy</code> 可以部署到很多平台，具体可以参考 <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">这个链接</a>.</p><p>若出现以下错误：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ERROR Deployer not found: git</span><br></pre></td></tr></table></figure><p>则执行如下命令来安装 <a href="https://github.com/hexojs/hexo-deployer-git" target="_blank" rel="noopener">hexo-deployer-git</a>：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npm install hexo-deployer-git --save</span><br></pre></td></tr></table></figure><p>再次执行 <code>hexo g</code> 和 <code>hexo d</code> 命令</p><p>此时，在浏览器中输入生成的 GitHub Pages 链接，就能看到和 <a href="http://localhost:4000" target="_blank" rel="noopener">http://localhost:4000</a> 一样的页面。</p><h3 id="绑定个人域名"><a href="#绑定个人域名" class="headerlink" title="绑定个人域名"></a>绑定个人域名</h3><p>现在我们使用的域名是 GitHub 提供的二级域名，如何绑定为自己的个人域名呢？如果你还没有个人域名，可以到 <a href="https://sg.godaddy.com/zh/" target="_blank" rel="noopener">GoDaddy</a> 购买。</p><p>在博客目录中的 source 目录下创建名为 CNAME 的文件，文件内容为自己的个人域名，保存。在博客根目录 再次执行 <code>hexo g</code> <code>hexo d</code> 指令重新部署。</p><p>有了这一步还不够，还需在域名的 DNS 中添加一条 CNAME 记录，将你的域名解析到你的 GitHub Pages 地址（其中 CNAME 记录的值为你的 GitHub Pages 地址）。等解析生效后，就可以通过你的个人域名访问了。</p><h3 id="绑定个人域名的好处"><a href="#绑定个人域名的好处" class="headerlink" title="绑定个人域名的好处"></a>绑定个人域名的好处</h3><ol><li>树立个人品牌，便于在互联网中传播</li><li>对搜索引擎更友好，甚至很多人用来进行搜索引擎优化 SEO</li></ol><h1 id="高阶内容"><a href="#高阶内容" class="headerlink" title="高阶内容"></a>高阶内容</h1><h2 id="添加404公益页面"><a href="#添加404公益页面" class="headerlink" title="添加404公益页面"></a>添加404公益页面</h2><p>将自己的 404 页面替换为公益 404 感觉比较有意义。</p><p>GitHub Pages有提供制作404页面的指引：<a href="https://help.github.com/articles/creating-a-custom-404-page-for-your-github-pages-site/" target="_blank" rel="noopener">Custom 404 Pages</a>。</p><p>推荐 <a href="http://www.qq.com/404/" target="_blank" rel="noopener">腾讯公益 404</a></p><h2 id="添加about页面"><a href="#添加about页面" class="headerlink" title="添加about页面"></a>添加about页面</h2><p>执行：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new page <span class="string">"about"</span></span><br></pre></td></tr></table></figure><p>之后在 \source\about\ 目录下会生成一个 index.md 文件，打开输入个人信息即可。</p><h1 id="补充"><a href="#补充" class="headerlink" title="补充"></a>补充</h1><h2 id="Hexo-相关常用指令"><a href="#Hexo-相关常用指令" class="headerlink" title="Hexo 相关常用指令"></a>Hexo 相关常用指令</h2><h3 id="init"><a href="#init" class="headerlink" title="init"></a>init</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo init [folder]</span><br></pre></td></tr></table></figure><p>新建一个网站。如果没有设置 folder ，Hexo 默认在目前的文件夹建立网站。</p><h3 id="new"><a href="#new" class="headerlink" title="new"></a>new</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new [layout] &lt;title&gt;</span><br></pre></td></tr></table></figure><p>新建一篇文章。如果没有设置 layout 的话，默认使用 _config.yml 中的 default_layout 参数代替。如果标题包含空格的话，请使用引号括起来。</p><h3 id="generate"><a href="#generate" class="headerlink" title="generate"></a>generate</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo generate</span><br></pre></td></tr></table></figure><p>生成静态文件。</p><table><thead><tr><th>选项</th><th>描述</th></tr></thead><tbody><tr><td>-d, –deploy</td><td>文件生成后立即部署网站</td></tr><tr><td>-w, –watch</td><td>监视文件变动</td></tr></tbody></table><p>该命令可以简写为</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo g</span><br></pre></td></tr></table></figure><h3 id="publish"><a href="#publish" class="headerlink" title="publish"></a>publish</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo publish [layout] &lt;filename&gt;</span><br></pre></td></tr></table></figure><p>发表草稿。</p><h3 id="server"><a href="#server" class="headerlink" title="server"></a>server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo server</span><br></pre></td></tr></table></figure><p>启动服务器。默认情况下，访问网址为： <a href="http://localhost:4000/。" target="_blank" rel="noopener">http://localhost:4000/。</a></p><table><thead><tr><th>选项</th><th>描述</th></tr></thead><tbody><tr><td>-p, –port</td><td>重设端口</td></tr><tr><td>-s, –static</td><td>只使用静态文件</td></tr><tr><td>-l, –log</td><td>启动日记记录，使用覆盖记录格式</td></tr></tbody></table><p>该命令可以简写为：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo s</span><br></pre></td></tr></table></figure><h3 id="deploy"><a href="#deploy" class="headerlink" title="deploy"></a>deploy</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo deploy</span><br></pre></td></tr></table></figure><p>部署网站。</p><table><thead><tr><th>参数</th><th>描述</th></tr></thead><tbody><tr><td>-g, –generate</td><td>部署之前预先生成静态文件</td></tr></tbody></table><p>该命令可以简写为：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo d</span><br></pre></td></tr></table></figure><h3 id="clean"><a href="#clean" class="headerlink" title="clean"></a>clean</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo clean</span><br></pre></td></tr></table></figure><p>清除缓存文件 (db.json) 和已生成的静态文件 (public)。</p><p>在某些情况（尤其是更换主题后），如果发现你对站点的更改无论如何也不生效，你可能需要运行该命令。</p><h2 id="主题个性化"><a href="#主题个性化" class="headerlink" title="主题个性化"></a>主题个性化</h2><p>请参考相关主题文档进行个性化设置。</p><h2 id="多台电脑同步"><a href="#多台电脑同步" class="headerlink" title="多台电脑同步"></a>多台电脑同步</h2><p>多台电脑共同维护博客的需求是很常见的，比如希望家里的电脑、公司的电脑都能正常使用。</p><p>我是这么做的，直接简单粗暴的将博客根目录初始化为 Git ，并增加一个私人的 remote。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">git init</span><br><span class="line">git remote add origin repo_url // 填入你的repo地址</span><br></pre></td></tr></table></figure><p>推荐使用 <a href="https://gitee.com" target="_blank" rel="noopener">码云</a> ，上面还可以建立私人的仓库并且免费。</p><p>OK，每次维护完再同步下博客源文件，当切换电脑时，在博客根目录下更新下 Git 即可同步。</p><h2 id="图床"><a href="#图床" class="headerlink" title="图床"></a>图床</h2><p>推荐使用:</p><ol><li><a href="https://www.qiniu.com/" target="_blank" rel="noopener">七牛云</a></li><li><a href="https://sm.ms/" target="_blank" rel="noopener">sm.ms</a></li></ol><p>关于使用 Automator 上传图片到 sm.ms 可以查看我的 <a href="https://ultrarex.com/2017/09/12/use-Automator-upload-images-to-sm-ms-2/">上一篇博文</a>。</p><h1 id="参考链接"><a href="#参考链接" class="headerlink" title="参考链接"></a>参考链接</h1><ol><li><a href="https://hexo.io/docs/" target="_blank" rel="noopener">Hexo 文档</a></li><li><a href="http://theme-next.iissnan.com/getting-started.html" target="_blank" rel="noopener">NexT 文档</a></li></ol><p>EOF</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;写在前面&quot;&gt;&lt;a href=&quot;#写在前面&quot; class=&quot;headerlink&quot; title=&quot;写在前面&quot;&gt;&lt;/a&gt;写在前面&lt;/h1&gt;&lt;h2 id=&quot;为什么需要自建博客？&quot;&gt;&lt;a href=&quot;#为什么需要自建博客？&quot; class=&quot;headerlink&quot; titl
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="hexo" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/hexo/"/>
+    
+    
+      <category term="hexo" scheme="https://ultrarex.com/tags/hexo/"/>
+    
+      <category term="blog" scheme="https://ultrarex.com/tags/blog/"/>
+    
+      <category term="GitHub Pages" scheme="https://ultrarex.com/tags/GitHub-Pages/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>使用 Automator 上传图片到 sm.ms</title>
+    <link href="https://ultrarex.com/p/4bcc.html"/>
+    <id>https://ultrarex.com/p/4bcc.html</id>
+    <published>2017-08-21T09:30:55.000Z</published>
+    <updated>2019-04-27T11:15:00.207Z</updated>
+    
+    <content type="html"><![CDATA[<p><img src="https://i.loli.net/2017/08/21/599aaa612fc14.jpg" alt="咸鱼"></p><p>每一条咸鱼都有一颗翻身的心，而我这条在晒太阳的某一天突然意识到我还有个博客好久没有更新了，于是乎怀着不抛弃不放弃的决心，准备拾起我的小博客（虽然没什么人看 笑）。</p><p>那么写博客、运营网站除了写一些文字，还会面临另一个问题 —— 在文字中插入图片。作为互联网服务中最基础的资源之一，随着互联网基础服务越来越专业化，图片的存储、处理、分发也发展成了一项独立的基础服务 —— 图床，也就是专门提供存储图片的地方，我们只需要通过图床提供的 API 接口，把图片上传上去，就可以通过外链访问了，无需关心图片是如何存储的，磁盘空间是否不足，磁盘是否损坏，访问速度快慢等问题，这些图床统统都会帮我们搞定，他们会用各种技术帮我们做图片相关的优化和服务，譬如：多机互备、CDN 加速、图片处理、文本识别等等。（本段摘抄自 <a href="https://sspai.com/post/40499" target="_blank" rel="noopener">《嗯，图片就交给它了》</a>）</p><p>工欲善其事，必先利其器，我的博客是用 <a href="https://hexo.io/zh-cn/index.html" target="_blank" rel="noopener">hexo</a> 搭建的，平时写作是用 <a href="https://zh.wikipedia.org/zh-hans/Markdown" target="_blank" rel="noopener">Markdown</a> 语言，Markdown 编辑器是用 <a href="https://itunes.apple.com/cn/app/id954188948" target="_blank" rel="noopener">MWeb</a> 软件，上传图片到图床是用 <a href="https://itunes.apple.com/cn/app/id1101244278" target="_blank" rel="noopener">iPic</a>， 关于 iPic 的详细介绍可以参见少数派的一篇文章 <a href="https://sspai.com/post/34756" target="_blank" rel="noopener">《iPic，快捷省心的图床工具》</a>。时隔多年当我再次安装好 iPic 的时候，发现了两个改变，一个是，iPic 已转变为订阅模式，58RMB/Year，一个是，上传图片到<a href="https://www.qiniu.com/" target="_blank" rel="noopener">七牛云</a>功能由免费版本可用变为了订阅模式可用。一年58元的订阅费用说贵也不贵，但是对于懒癌晚期患者的我来说，用不了几次，也就自然不想花这个钱了。</p><p>随想找一个替代方案，在<a href="https://sspai.com/" target="_blank" rel="noopener">少数派</a>上看到一篇关于图床的介绍文章 <a href="https://sspai.com/post/40499" target="_blank" rel="noopener">《嗯，图片就交给它了》</a> 写的很不错，也在其中发现了今天故事的主角 <a href="https://sm.ms/" target="_blank" rel="noopener">sm.ms图床</a></p><p><img src="https://i.loli.net//2017//08//21//599ab25a8ce9a.png" alt="sm.ms"></p><p>其由 <a href="https://www.v2ex.com/" target="_blank" rel="noopener">V2EX</a> <a href="https://www.v2ex.com/member/Showfom" target="_blank" rel="noopener">@Showfom</a> 自建的，无外链限制，无流量限制的图床，支持 HTTPS，速度不错，运行时间已两年有余。</p><p>sm.ms 不仅提供了 web 页面的上传方式，也提供了上传的 API <a href="https://sm.ms/doc/" target="_blank" rel="noopener">https://sm.ms/doc/</a> 作为一个渣渣程序员自然是想快捷的在 Finder 中选取图片右键直接上传到 sm.ms 。那么现在就该本文的第二个主角登场了，铛铛铛 —— Automator 。</p><p><img src="https://i.loli.net/2017/08/21/599ab42f1bda5.png" alt="Automator"></p><p>就是这个俗称「扛炮」的家伙，你可以在 LaunchPad 中的其他文件夹中找到他，或者通过 Spotlight 搜索来启动它。「扛炮」的功能很强大，如果你有兴趣可以做深入了解。</p><p>废话不多说（其实说了挺多的了 逃），打开 Automator 后，点击新建文稿，选取服务：</p><p><img src="https://i.loli.net/2017/08/21/599ab600bdc9c.png" alt="Automator"></p><p>因为是上传图片，所以“服务“收到选定的类型选图像文件，这样只有在图像文件右键才会出现我们创建的服务：</p><p><img src="https://i.loli.net/2017/08/21/599ab65092015.png" alt="Automator"></p><p>由于使用 API 上传我们需要所选图片的路径，所以在「实用工具」中，找到「拷贝至剪切板」并拖拽到右边的 Workflow 中：</p><p><img src="https://i.loli.net/2017/08/21/599ab6c5ec0e2.png" alt="Automator"></p><p>接下来就需要一点 Shell 的知识了，同样在「实用工具」中，找到「运行 Shell 脚本」并拖拽到 Workflow 中，恕我不才，作为一个 Shell 初学者不就敢在这里耍大刀了（虽然是我的地盘 哈哈哈 一个礼貌而又不失尴尬的微笑），感兴趣的同学可以做多了解，直接上最终的成果：</p><p><img src="https://i.loli.net/2017/08/21/599ab8b81865e.png" alt="Automator"></p><p>然后将其保存，并起一个你喜欢的名字，然后当你在任何应用程序中右键图片的时候（当然该应用支持），譬如 Finder ，就可以看到你自己创建的服务了。选中图片，右键点击上传，等菜单栏中的 Automator 小齿轮旋转完毕，就可以粘贴生成的 Markdown 格式的图片链接了，so easy，简直是步步高牌打火机，哪儿里不会点哪儿里。</p><p>EOF</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;img src=&quot;https://i.loli.net/2017/08/21/599aaa612fc14.jpg&quot; alt=&quot;咸鱼&quot;&gt;&lt;/p&gt;
+&lt;p&gt;每一条咸鱼都有一颗翻身的心，而我这条在晒太阳的某一天突然意识到我还有个博客好久没有更新了，于是乎怀着不抛弃不放弃的决心，准
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="Automator" scheme="https://ultrarex.com/tags/Automator/"/>
+    
+      <category term="sm.ms" scheme="https://ultrarex.com/tags/sm-ms/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>加速自动隐藏 Dock 栏显示</title>
+    <link href="https://ultrarex.com/p/f400.html"/>
+    <id>https://ultrarex.com/p/f400.html</id>
+    <published>2017-08-21T06:14:22.000Z</published>
+    <updated>2019-04-27T11:15:00.201Z</updated>
+    
+    <content type="html"><![CDATA[<p>如果你习惯于 Dock 栏自动隐藏以来增加屏幕的显示区域，但是每次用鼠标呼出它的时候又想让它快速出现，那么你可以通过以下指令来修改 Dock 栏出现时播放动画的时间，0 即不播放动画，当然你也可以设置一个你喜欢的时间：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults write com.apple.dock autohide-time-modifier -<span class="built_in">float</span> 0; killall Dock</span><br></pre></td></tr></table></figure></p><p>当然这里还有后悔药，如果你想恢复到之前的状态，那么执行以下指令即可：<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults delete com.apple.dock autohide-time-modifier; killall Dock</span><br></pre></td></tr></table></figure></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;如果你习惯于 Dock 栏自动隐藏以来增加屏幕的显示区域，但是每次用鼠标呼出它的时候又想让它快速出现，那么你可以通过以下指令来修改 Dock 栏出现时播放动画的时间，0 即不播放动画，当然你也可以设置一个你喜欢的时间：&lt;br&gt;&lt;figure class=&quot;highlight
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="Dock" scheme="https://ultrarex.com/tags/Dock/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>修改系统截图输出文件格式</title>
+    <link href="https://ultrarex.com/p/2ce6.html"/>
+    <id>https://ultrarex.com/p/2ce6.html</id>
+    <published>2017-08-21T06:04:51.000Z</published>
+    <updated>2019-04-27T11:15:00.203Z</updated>
+    
+    <content type="html"><![CDATA[<p>很简单，一条指令即可：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">defaults write com.apple.screencapture <span class="built_in">type</span> jpg; killlall Dock</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;很简单，一条指令即可：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;co
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="系统截图" scheme="https://ultrarex.com/tags/%E7%B3%BB%E7%BB%9F%E6%88%AA%E5%9B%BE/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>打开 Go2Shell Preferences</title>
+    <link href="https://ultrarex.com/p/1e7.html"/>
+    <id>https://ultrarex.com/p/1e7.html</id>
+    <published>2017-08-14T11:14:48.000Z</published>
+    <updated>2019-04-27T11:15:00.204Z</updated>
+    
+    <content type="html"><![CDATA[<p>打开 Terminal (终端) 输入如下指令并执行：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">open -a Go2Shell --args config</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;打开 Terminal (终端) 输入如下指令并执行：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="Go2Shell" scheme="https://ultrarex.com/tags/Go2Shell/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>「STOMP 破铜烂铁」</title>
+    <link href="https://ultrarex.com/p/9b44.html"/>
+    <id>https://ultrarex.com/p/9b44.html</id>
+    <published>2016-08-13T15:34:47.000Z</published>
+    <updated>2019-04-27T11:15:00.206Z</updated>
+    
+    <content type="html"><![CDATA[<p><img src="http://ww2.sinaimg.cn/large/006tKfTcgw1f6skcjs2xdj30pu0duwgz.jpg" alt="STOMP_BLAST"></p><p>不要误会，此 STOMP 不是彼 <a href="https://stomp.github.io/" target="_blank" rel="noopener">STOMP</a>，我的代码病又犯了，😁</p><blockquote><p>破铜烂铁乐队（英语：STOMP）是一个结合了敲击音乐、舞蹈，与情境喜剧的表演团体。他们运用日常用品如扫把、垃圾桶盖、打火机…等等破铜烂铁发出富有音乐性的节奏。STOMP 是1991年夏天由两名英国音乐家表演者 Luke Cresswell 与 Steve McNicholas 策划发想。<a href="http://www.webcitation.org/6EAGTUJSg" target="_blank" rel="noopener">[1]</a>该团自1994年2月进驻百老汇以来，曾连续七年获得百老汇剧院演出票房冠军。</p><p>引用自： <a href="https://zh.wikipedia.org/wiki/%E7%A0%B4%E9%93%9C%E7%83%82%E9%93%81%E4%B9%90%E9%98%9F#cite_note-Origin-1" target="_blank" rel="noopener">维基百科</a></p></blockquote><p>很有幸也很自私的获得了公司提供的「STOMP 破铜烂铁」北京站的4张活动票（不要问我为何能拿到4张票，都说了很自私嘛，微笑脸），怀着好奇心带着好基友来到了解放军歌剧院观看。</p><p>刚到解放军歌剧院门前，就有人上来询问是否有多余的票可否出售，可见其火爆程度。</p><p>大家自觉的排队进场，随即入座，短暂平复下激动的心情后，演出正式开始了。</p><p>一开场就看到生活中各种最常见的和最不起眼的工具在他们的手上，变成了各式各样的乐器，或低沉或高昂或婉转，各种声音柔和交织，宛如一出趣味横生、即兴狂想的交响乐。</p><p>生活中不是缺少乐趣，而是缺少创造乐趣的我们；生活中也不乏艺术，而是缺少发现它们的我们。</p><p>正如一句话说的那样：艺术来源于生活，又高于生活。</p><p>破铜烂铁，给予我的不仅仅是听觉视觉上的冲击，更多的是一种化腐朽为神奇的理念和积极向上的生活态度！</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;img src=&quot;http://ww2.sinaimg.cn/large/006tKfTcgw1f6skcjs2xdj30pu0duwgz.jpg&quot; alt=&quot;STOMP_BLAST&quot;&gt;&lt;/p&gt;
+&lt;p&gt;不要误会，此 STOMP 不是彼 &lt;a href=&quot;https://s
+      
+    
+    </summary>
+    
+      <category term="生活" scheme="https://ultrarex.com/categories/%E7%94%9F%E6%B4%BB/"/>
+    
+    
+      <category term="生活" scheme="https://ultrarex.com/tags/%E7%94%9F%E6%B4%BB/"/>
+    
+      <category term="STOMP" scheme="https://ultrarex.com/tags/STOMP/"/>
+    
+      <category term="破铜烂铁" scheme="https://ultrarex.com/tags/%E7%A0%B4%E9%93%9C%E7%83%82%E9%93%81/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>修改 Launchpad 布局</title>
+    <link href="https://ultrarex.com/p/2415.html"/>
+    <id>https://ultrarex.com/p/2415.html</id>
+    <published>2016-08-10T13:45:55.000Z</published>
+    <updated>2019-04-27T11:15:00.202Z</updated>
+    
+    <content type="html"><![CDATA[<p>我们知道 Launchpad 默认显示应用的数量是一定的，这给习惯用 Launchpad 启动应用的用户带来了不便，无法满足其个性化的需求。虽然在 Launchpad 中无法调整其布局，但是我们还是可以通过终端指令来修改的。</p><p>打开终端；输入以下指令：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">defaults write com.apple.dock springboard-columns -int 9;</span><br><span class="line">defaults write com.apple.dock springboard-rows -int 9;</span><br><span class="line">defaults write com.apple.dock ResetLaunchPad -bool TRUE;</span><br><span class="line">killall Dock</span><br></pre></td></tr></table></figure><p>通过这段指令我们就可以将 Launchpad 的展示行和列进行调整。其中 9 为列，9 为行，您可以按需填写期望的行和列。</p><p><img src="http://obucpmidn.bkt.clouddn.com/Launchpad_example.png" alt="事例"></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;我们知道 Launchpad 默认显示应用的数量是一定的，这给习惯用 Launchpad 启动应用的用户带来了不便，无法满足其个性化的需求。虽然在 Launchpad 中无法调整其布局，但是我们还是可以通过终端指令来修改的。&lt;/p&gt;
+&lt;p&gt;打开终端；输入以下指令：&lt;/p&gt;
+
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="修改 Launchpad 布局" scheme="https://ultrarex.com/tags/%E4%BF%AE%E6%94%B9-Launchpad-%E5%B8%83%E5%B1%80/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>在终端中获取 macOS 版本号</title>
+    <link href="https://ultrarex.com/p/ca85.html"/>
+    <id>https://ultrarex.com/p/ca85.html</id>
+    <published>2016-08-10T02:18:54.000Z</published>
+    <updated>2019-04-27T11:15:00.200Z</updated>
+    
+    <content type="html"><![CDATA[<p>sw_vers 命令，可获取当前系统版本信息</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">➜  ~ sw_vers</span><br><span class="line">ProductName:Mac OS X</span><br><span class="line">ProductVersion:10.11.6</span><br><span class="line">BuildVersion:15G31</span><br></pre></td></tr></table></figure><p>然后就可以通过正则表达式配合 sw_vers 命令，来获取系统版本号了：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sw_vers | grep <span class="string">'ProductVersion:'</span> | grep -o <span class="string">'[0-9]*\.[0-9]*\.[0-9]*'</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;sw_vers 命令，可获取当前系统版本信息&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="获取 macOS 版本号" scheme="https://ultrarex.com/tags/%E8%8E%B7%E5%8F%96-macOS-%E7%89%88%E6%9C%AC%E5%8F%B7/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>使 League of Legends 无法打开</title>
+    <link href="https://ultrarex.com/p/a72b.html"/>
+    <id>https://ultrarex.com/p/a72b.html</id>
+    <published>2016-08-09T16:14:36.000Z</published>
+    <updated>2019-04-27T11:15:00.205Z</updated>
+    
+    <content type="html"><![CDATA[<p>先利用TXT写以下代码另存为VBS格式，代码如下：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">do</span> </span><br><span class="line"><span class="built_in">set</span> bag=getobject(<span class="string">"winmgmts:.rootcimv2"</span>) </span><br><span class="line"><span class="built_in">set</span> pipe=bag.execquery(<span class="string">"select * from win32_process where name='League of Legends.exe'"</span>)</span><br><span class="line"><span class="keyword">for</span> each i <span class="keyword">in</span> pipe </span><br><span class="line">i.terminate() </span><br><span class="line">next </span><br><span class="line">wscript.sleep 1000 </span><br><span class="line">loop</span><br></pre></td></tr></table></figure><p>代码的意思是：系统每1000毫秒检测一次是否运行了 League of Legends.exe 这样一个程序，如果运行了，他会自动后台关闭程序，但是对别的运行软件是没有任何影响的，绝对毫无痕迹！</p><p>同理，您可以修改时间间隔为您所期望的值，修改进程为您期望结束的其它进程！</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;先利用TXT写以下代码另存为VBS格式，代码如下：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span clas
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Windows Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Windows-Tips/"/>
+    
+    
+      <category term="Windows Tips" scheme="https://ultrarex.com/tags/Windows-Tips/"/>
+    
+      <category term="使 LOL 无法打开" scheme="https://ultrarex.com/tags/%E4%BD%BF-LOL-%E6%97%A0%E6%B3%95%E6%89%93%E5%BC%80/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>显示资源库文件夹</title>
+    <link href="https://ultrarex.com/p/9745.html"/>
+    <id>https://ultrarex.com/p/9745.html</id>
+    <published>2016-08-09T16:03:25.000Z</published>
+    <updated>2019-04-27T11:15:00.205Z</updated>
+    
+    <content type="html"><![CDATA[<p>显示：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chflags nohidden ~/Library</span><br></pre></td></tr></table></figure><p>隐藏：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">chflags hidden ~/Library</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;显示：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;code&quot;&gt;&lt;pre
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="显示资源库文件夹" scheme="https://ultrarex.com/tags/%E6%98%BE%E7%A4%BA%E8%B5%84%E6%BA%90%E5%BA%93%E6%96%87%E4%BB%B6%E5%A4%B9/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>如何制作 macOS U盘安装盘</title>
+    <link href="https://ultrarex.com/p/128d.html"/>
+    <id>https://ultrarex.com/p/128d.html</id>
+    <published>2016-08-09T15:58:08.000Z</published>
+    <updated>2019-04-27T11:15:00.201Z</updated>
+    
+    <content type="html"><![CDATA[<p>以 OS X El Capitan 为例：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo ~/Downloads/OS/Install\ OS\ X\ El\ Capitan.app/Contents/Resources/createinstallmedia --volume /Volumes/Installer --applicationpath ~/Downloads/OS/Install\ OS\ X\ El\ Capitan.app/ --nointeraction  <span class="comment"># 其中 Installer 为U盘名</span></span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;以 OS X El Capitan 为例：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="macOS U盘安装" scheme="https://ultrarex.com/tags/macOS-U%E7%9B%98%E5%AE%89%E8%A3%85/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>修改终端默认显示的用户名(localhost)</title>
+    <link href="https://ultrarex.com/p/fdfb.html"/>
+    <id>https://ultrarex.com/p/fdfb.html</id>
+    <published>2016-08-09T15:45:49.000Z</published>
+    <updated>2019-04-27T11:15:00.203Z</updated>
+    
+    <content type="html"><![CDATA[<p>如何修改终端默认显示的用户名呢？</p><p>其实很简单：</p><ol><li><p>打开终端</p></li><li><p>输入：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo scutil --<span class="built_in">set</span> HostName yourName <span class="comment"># yourName 就是你想更改为的名字</span></span><br></pre></td></tr></table></figure></li><li><p>回车，All done.</p></li></ol>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;如何修改终端默认显示的用户名呢？&lt;/p&gt;
+&lt;p&gt;其实很简单：&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;&lt;p&gt;打开终端&lt;/p&gt;
+&lt;/li&gt;
+&lt;li&gt;&lt;p&gt;输入：&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Mac-Tips/"/>
+    
+    
+      <category term="Mac Tips" scheme="https://ultrarex.com/tags/Mac-Tips/"/>
+    
+      <category term="终端用户名修改" scheme="https://ultrarex.com/tags/%E7%BB%88%E7%AB%AF%E7%94%A8%E6%88%B7%E5%90%8D%E4%BF%AE%E6%94%B9/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Homebrew安装MySQL后如何连接</title>
+    <link href="https://ultrarex.com/p/5c22.html"/>
+    <id>https://ultrarex.com/p/5c22.html</id>
+    <published>2016-08-01T14:11:54.000Z</published>
+    <updated>2019-04-27T11:15:00.200Z</updated>
+    
+    <content type="html"><![CDATA[<p>用如下命令安装了MySQL</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">brew install mysql</span><br></pre></td></tr></table></figure><p>安装完成后，使用</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root -p</span><br></pre></td></tr></table></figure><p>回车后，输入默认密码、空格、直接回车均不可。并提示：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ERROR 2002 (HY000): Can<span class="string">'t connect to local MySQL server through socket '</span>/tmp/mysql.sock<span class="string">' (2)</span></span><br></pre></td></tr></table></figure><p>这时，该怎么办呢？</p><p>其实在用Homebrew安装完成后，就有提示告诉我们为什么。</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">/usr/<span class="built_in">local</span>/Cellar/mysql/5.7.13/bin/mysqld --initialize-insecure --user=comet</span><br><span class="line">==&gt; Caveats</span><br><span class="line">We<span class="string">'ve installed your MySQL database without a root password. To secure it run:</span></span><br><span class="line"><span class="string">    mysql_secure_installation</span></span><br></pre></td></tr></table></figure><p>可以看到Homebrew已经在安装的时候初始化了MySQL，现在只需要在终端里执行</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql_secure_installation</span><br></pre></td></tr></table></figure><p>在需要密码的时候，直接回车，不出意外，你的终端会打印出以下信息：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Error: Can<span class="string">'t connect to local MySQL server through socket '</span>/tmp/mysql.sock<span class="string">' (2)</span></span><br></pre></td></tr></table></figure><p>是不是有一种＊了狗的感觉，别慌！</p><p>冷静分析下：</p><blockquote><p>MySQL服务是否启动，可以使用<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ps au | grep mysql</span><br></pre></td></tr></table></figure></p></blockquote><blockquote><p>查看有无MySQL进程，若无，可以使用<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">sudo mysqld_safe</span><br></pre></td></tr></table></figure></p></blockquote><blockquote><p>启动。</p><p>尝试设置密码<br><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysqladmin -u root password <span class="string">"newpassword"</span></span><br></pre></td></tr></table></figure></p></blockquote><p>我发现我这儿的问题是MySQL服务没有启动，那么接下来聪明的你知道我怎么做了吧。</p><p>没错，执行</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql.server start</span><br></pre></td></tr></table></figure><p>终端输出：</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">SUCCESS!</span><br></pre></td></tr></table></figure><p>这个时候再执行 <strong>mysql_secure_installation</strong> 命令，一路回车下去即可。</p><p>搞定，这个时候就可以使用</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">mysql -u root -p</span><br></pre></td></tr></table></figure><p>连接MySQL了，哦，不，是你的SQL。</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;用如下命令安装了MySQL&lt;/p&gt;
+&lt;figure class=&quot;highlight bash&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;/pre&gt;&lt;/td&gt;&lt;td class=&quot;
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="Homebrew" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Homebrew/"/>
+    
+      <category term="MySQL" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/Homebrew/MySQL/"/>
+    
+    
+      <category term="Homebrew" scheme="https://ultrarex.com/tags/Homebrew/"/>
+    
+      <category term="MySQL" scheme="https://ultrarex.com/tags/MySQL/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>关于Hexo的各种注意事项（坑）</title>
+    <link href="https://ultrarex.com/p/e20b.html"/>
+    <id>https://ultrarex.com/p/e20b.html</id>
+    <published>2016-08-01T13:42:10.000Z</published>
+    <updated>2019-04-27T11:15:00.199Z</updated>
+    
+    <content type="html"><![CDATA[<ul><li><h2 id="config-yml配置"><a href="#config-yml配置" class="headerlink" title="_config.yml配置"></a>_config.yml配置</h2></li></ul><p>在_config.yml中，属性和属性的值中需要用空格隔开。譬如：<strong>title: ur title</strong>。</p><ul><li><h2 id="安装插件"><a href="#安装插件" class="headerlink" title="安装插件"></a>安装插件</h2></li></ul><p>安装插件的时候，不要忘记<strong>–save</strong>参数。</p><ul><li><h2 id="常用命令"><a href="#常用命令" class="headerlink" title="常用命令"></a>常用命令</h2></li></ul><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new <span class="string">"postName"</span> <span class="comment">#新建文章</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo new page <span class="string">"pageName"</span> <span class="comment">#新建页面</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo generate <span class="comment">#生成静态页面至public目录</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo server <span class="comment">#开启预览访问端口（默认端口4000，'ctrl + c'关闭server）</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo deploy <span class="comment">#将.deploy目录部署到GitHub</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo <span class="built_in">help</span>  <span class="comment"># 查看帮助</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo version  <span class="comment">#查看Hexo的版本</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo deploy -g  <span class="comment">#生成加部署</span></span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo server -g  <span class="comment">#生成加预览</span></span><br></pre></td></tr></table></figure><ul><li><h2 id="命令的简写"><a href="#命令的简写" class="headerlink" title="命令的简写"></a>命令的简写</h2></li></ul><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo n == hexo new</span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo g == hexo generate</span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo s == hexo server</span><br></pre></td></tr></table></figure><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">hexo d == hexo deploy</span><br></pre></td></tr></table></figure><ul><li><h2 id="To-be-continued-…"><a href="#To-be-continued-…" class="headerlink" title="To be continued …"></a>To be continued …</h2></li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;ul&gt;
+&lt;li&gt;&lt;h2 id=&quot;config-yml配置&quot;&gt;&lt;a href=&quot;#config-yml配置&quot; class=&quot;headerlink&quot; title=&quot;_config.yml配置&quot;&gt;&lt;/a&gt;_config.yml配置&lt;/h2&gt;&lt;/li&gt;
+&lt;/ul&gt;
+&lt;p&gt;在_confi
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="hexo" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/hexo/"/>
+    
+      <category term="faq" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/hexo/faq/"/>
+    
+    
+      <category term="hexo" scheme="https://ultrarex.com/tags/hexo/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Introduce Hexo</title>
+    <link href="https://ultrarex.com/p/9e1e.html"/>
+    <id>https://ultrarex.com/p/9e1e.html</id>
+    <published>2016-08-01T13:18:54.000Z</published>
+    <updated>2019-04-27T11:15:00.201Z</updated>
+    
+    <content type="html"><![CDATA[<p><a href="https://hexo.io/" target="_blank" rel="noopener">Hexo</a>, A fast, simple &amp; powerful blog framework! Check <a href="https://hexo.io/docs/" target="_blank" rel="noopener">documentation</a> for more info. If you get any problems when using Hexo, you can find the answer in <a href="https://hexo.io/docs/troubleshooting.html" target="_blank" rel="noopener">troubleshooting</a> or you can ask me on <a href="https://github.com/hexojs/hexo/issues" target="_blank" rel="noopener">GitHub</a>.</p><h2 id="Quick-Start"><a href="#Quick-Start" class="headerlink" title="Quick Start"></a>Quick Start</h2><h3 id="Create-a-new-post"><a href="#Create-a-new-post" class="headerlink" title="Create a new post"></a>Create a new post</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo new <span class="string">"My New Post"</span></span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/writing.html" target="_blank" rel="noopener">Writing</a></p><h3 id="Run-server"><a href="#Run-server" class="headerlink" title="Run server"></a>Run server</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo server</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/server.html" target="_blank" rel="noopener">Server</a></p><h3 id="Generate-static-files"><a href="#Generate-static-files" class="headerlink" title="Generate static files"></a>Generate static files</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo generate</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/generating.html" target="_blank" rel="noopener">Generating</a></p><h3 id="Deploy-to-remote-sites"><a href="#Deploy-to-remote-sites" class="headerlink" title="Deploy to remote sites"></a>Deploy to remote sites</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ hexo deploy</span><br></pre></td></tr></table></figure><p>More info: <a href="https://hexo.io/docs/deployment.html" target="_blank" rel="noopener">Deployment</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;&lt;a href=&quot;https://hexo.io/&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;Hexo&lt;/a&gt;, A fast, simple &amp;amp; powerful blog framework! Check &lt;a href=&quot;https://
+      
+    
+    </summary>
+    
+      <category term="技术" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/"/>
+    
+      <category term="hexo" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/hexo/"/>
+    
+      <category term="introduce" scheme="https://ultrarex.com/categories/%E6%8A%80%E6%9C%AF/hexo/introduce/"/>
+    
+    
+      <category term="hexo" scheme="https://ultrarex.com/tags/hexo/"/>
+    
+  </entry>
+  
+</feed>
